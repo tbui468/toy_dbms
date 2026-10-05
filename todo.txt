@@ -1,0 +1,119 @@
+Get infrastucture together to get LRU_tests running
+  Scale test is very slow when trying to go through 1 million frames, where every other frame is non-evictable
+
+    set_evictable and record_access should be changed to:
+
+      void lru_init(struct lru *replacer, int capacity);
+      void lru_free(struct lru *replacer);
+      void lru_fix(struct lru *replacer); //noop for now? //need to be thread safe
+      void lru_unfix(struct lru *replacer); //need to be thread safe
+      frame_id_t lru_evict(struct lru *replacer); //need to be thread safe
+      int lru_size(struct lru *replacer); //evictable frames. need to be thread safe
+      int lru_capacity(struct lru *replacer);
+
+    buffer_pool_manager (including read/write latches)
+    disk_manager
+    disk_scheduler
+
+    lru_fix(replacer, frame_id); //   The bpm handles should only call this when pins > 0.  Could put in data to assert that a frame is fixed before trying to unfix it
+    lru_unfix(replacer, frame_id); // this does the same thing as record_access now, including incrementing size by 1.  bpm calls this when pins == 0 after decrementing
+
+    calling unfix on a frame that has not been fixed is a bpm problem - don't need to worry about it as the replacer???
+    lru_remove may not be needed since there's no reason to remove non-evictable frames here
+
+    //get free frame
+    if (!(frame = bpm_get_free_frame())):
+      frame = bpm->replacer->evict();
+
+    bpm_pin(frame); // this will call lru_fix on the frame
+
+    //load data into page
+    //do whatever
+
+    //at some point in the future bpm_unpin is called enough times to get pincount == 0, at which point lru_unfix is called
+
+    Rather than using least-recent-referenced, should be least-recently-unpinned
+      
+    When access is recorded, put it into evictable list
+    If set_evictable(false) is called on a frame, remove it from evictable list - just unlink it
+
+    record_access is _not_ really necessary - should just use set_evictable as the main decider on how to handle this
+      split set_evictable into:
+        fix and unfix
+
+    a fixed frame can still be used
+
+    How does the bpm get frames to load buffers into?  Should it ask the replacer for a free frame?
+    Or should it track available buffers itself?
+
+    bpm tracks free and used (pinned or unpinned) frames
+      it will use free frames until no longer possible
+      at that point it will have the replacer evict frames to get new frame ids
+
+  All pages start as unpinned
+
+  Use the modern ARC replacer API, but implement LRU for now
+  Implement tests one at a time and pass them
+
+  Is the frame id something I just decide to use?  The buffer pool manager tracks which frames are used/not used
+    replacer just does thing with whichever frame is assigned to it
+
+  Implement and test replacer first before handling buffer pool manager
+
+  Need to implement latches too
+    struct latch {
+      bool write;
+    };
+
+  Either write descriptions on technical details OR develop dbms internals course?
+    
+  Course Description
+    developing a DBMS from first principles.  Will need to essentially write an entire
+    DBMS anyway, so continueing on with the lru (and even writing about it) would not go 
+    to waste.
+
+    Modules
+      1. Relational Databases + SQL
+      2. Disk Manager
+      3. Buffer Pool Manager
+      4. Slotted Array Storage
+      5. Indexes
+      6. Tokenizer
+      7. Parser and Binder
+      9. Write Ahead Logging
+      8. Access Methods (including sort/join algorithms)
+      9. Query Execution
+      10. Transactions
+      11. Query Optimizations
+
+LRU
+  FunctionPurpose
+    lru_init(capacity)Create replacer that tracks at most capacity frames
+    lru_free(lru)Free everything
+    lru_set_evictable(lru, frame_id, bool)Mark frame pin/unpin (only true frames can be victims)
+    lru_evict(lru, &frame_id)Return least-recently-used evictable frame (or false)
+    lru_record_access(lru, frame_id, page_id)Move frame to MRU (inserts it if new; starts non-evictable)
+    lru_remove(lru, frame_id)Drop frame immediately (no eviction callback)
+    lru_size(lru)Number of currently evictable frames
+    lru_capacity(lru)Max frames the replacer was created with
+
+  Implementation notes
+    Doubly-linked list with dummy head/tail (head→next = MRU, tail→prev = LRU).
+    Open-chaining hash table for O(1) frame_id → node lookup.
+    Newly recorded frames start non-evictable (mirrors the usual “pin on first access” buffer-pool pattern).
+    lru_size() reports only the count of frames that lru_evict can actually choose.
+    All public functions tolerate a NULL replacer (safe no-ops).
+
+  Unit tests that are covered
+    test_remove                   /* remove without going through evict */
+    test_remove_non_evictable
+    test_capacity_limit           /* extra inserts are ignored when full */
+    test_evict_then_reuse         /* classic “evict then re-record same frame” */
+    test_empty_and_null_safety
+    scale_test /* requires hash table to have O(1) lookup */
+    concurrent_test /* see how this is tested in bustub ARC to ensure we test correctly */
+
+Postgres LRU
+  study code and make writeup
+  run logic to test buffer manager
+
