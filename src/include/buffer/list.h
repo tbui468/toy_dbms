@@ -30,9 +30,11 @@ struct list {
 
 void list_init(struct list *list, int default_capacity);
 void list_free(struct list *list);
+int list_size(struct list *list);
 // returns internal offset to allow quick removal
 size_t list_append(struct list *list, node_id_t id);
 void list_erase(struct list *list, size_t off);
+size_t list_pop_front(struct list *list);
 bool list_contains(struct list *list, node_id_t id);
 
 #endif // LIST_H

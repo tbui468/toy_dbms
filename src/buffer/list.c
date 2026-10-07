@@ -26,6 +26,10 @@ void list_free(struct list *list) {
   free(list->nodes);
 }
 
+int list_size(struct list *list) {
+  return list->size;
+}
+
 // returns internal offset to allow quick removal
 size_t list_append(struct list *list, node_id_t id) {
   if (list->freelist == INVALID_NODE_OFFSET) {
@@ -82,6 +86,12 @@ void list_erase(struct list *list, size_t off) {
   list->freelist = off;
 
   list->size--;
+}
+
+size_t list_pop_front(struct list *list) {
+  size_t value = list->nodes[list->front].id; 
+  list_erase(list, list->front); 
+  return value;
 }
 
 bool list_contains(struct list *list, node_id_t id) {

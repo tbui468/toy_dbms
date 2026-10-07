@@ -7,18 +7,15 @@ Get infrastucture together to get LRU_tests running
       -fsanitize=leak
       -fsanitize=undefined
 
-  Use list + table to implement replacer
-    Integrate list into replacer and use this to track evicted frames
-    ensure all lru tests pass
-
-  Commit once all lru tests pass since we've made major changes
+  Crafting Interpreters -> 
 
   Concurrency for table + list
     Add tests for table + list to ensure single-threaded correctness
     Add tests for table + list concurrency
     use rwlocks to protect data integrity on multiple accessors
 
-  Concurreny for replacer
+  Concurrency for replacer
+    write tests to ensure nothing breaks
 
   for page guards, should have wrapper functions for _all_ functions that will use page guards
     these wrapper functions will allocate a context to allow usage of page guards before calling the implementation
