@@ -7,16 +7,9 @@ Get infrastucture together to get LRU_tests running
       -fsanitize=leak
       -fsanitize=undefined
 
-  Replacer is not very memory efficient
+  Use list + table to implement replacer
     Integrate list into replacer and use this to track evicted frames
- 
-  Hash table 
-    Make hash table resize after hitting some load_factor (ie, .75) rather than starting out too big
-      start with something reasonable (ie, 256), and double in size each time load factor is too high
-
-    Generalize hash table to use size_t for both fields - the same table can be used to store page_ids + pin_counts
-
-    Move hash table to own file (what directory?) since it will be used by the bpm to store pin counts too
+    ensure all lru tests pass
 
   Commit once all lru tests pass since we've made major changes
 
