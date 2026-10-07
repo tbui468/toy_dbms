@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <pthread.h>
 
 #define INVALID_NODE_OFFSET SIZE_MAX
 typedef size_t node_id_t;
@@ -25,6 +26,8 @@ struct list {
   size_t back;
 
   struct node *nodes;
+
+  pthread_mutex_t latch;
 };
 
 

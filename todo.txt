@@ -7,9 +7,30 @@ Get infrastucture together to get LRU_tests running
       -fsanitize=leak
       -fsanitize=undefined
 
-  Crafting Interpreters -> 
+  Move testing code to own file in util called test.h
+    replacer_tests.c have canonical test logic since it includes test names
+
+  Crafting Interpreters -> Crafting Database Systems
+    Really barebones dbms, but all core components
+      disk
+      buffer pool
+      indexes
+      tokenizing
+      parsing
+      binding
+      access methods
+      query planner
+      query optimizer
+      concurrency control
+      logging
+      etc
 
   Concurrency for table + list
+    list concurrency
+      have 2 threads continuously add/delete numbers unique to each thread (ie, thread 0 handles even and thread 1 handles odd)
+      at the same time, have all threads read their own numbers
+      finally, have all threads add their numbers and then have a single thread check that all numbers are present
+      this test should fail without multithreading handled
     Add tests for table + list to ensure single-threaded correctness
     Add tests for table + list concurrency
     use rwlocks to protect data integrity on multiple accessors
