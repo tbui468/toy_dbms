@@ -59,6 +59,8 @@ void table_init(struct table *table, size_t bucket_count) {
   for (int i = 0; i < bucket_count; i++) {
     bucket_init(table->buckets + i);
   }
+
+  pthread_mutex_init(&table->latch, NULL);
 }
 
 void table_free(struct table *table) {
@@ -66,6 +68,7 @@ void table_free(struct table *table) {
     bucket_free(table->buckets + i);
   }
   free(table->buckets);
+  pthread_mutex_destroy(&table->latch);
 }
 
 static inline int hash(struct table *table, size_t key) {
@@ -92,6 +95,7 @@ static void table_resize(struct table *old_table) {
 }
 
 void table_put(struct table *table, size_t key, size_t value) {
+  pthread_mutex_lock(&table->latch);
   int bucket = hash(table, key);
   table->entry_count += bucket_put(table->buckets + bucket, key, value);
 
@@ -99,16 +103,28 @@ void table_put(struct table *table, size_t key, size_t value) {
   if (table->entry_count > table->bucket_count * LOAD_FACTOR_THRESHOLD) {
     table_resize(table);
   }
+  pthread_mutex_unlock(&table->latch);
 }
 
 bool table_get(struct table *table, size_t key, size_t *value) {
+  pthread_mutex_lock(&table->latch);
   int bucket = hash(table, key);
-  return bucket_get(table->buckets + bucket, key, value);
+  bool result = bucket_get(table->buckets + bucket, key, value);
+  pthread_mutex_unlock(&table->latch);
+  return result;
 }
 
 void table_delete(struct table *table, size_t key) {
+  pthread_mutex_lock(&table->latch);
   int bucket = hash(table, key);
   bucket_delete(table->buckets + bucket, key);
   table->entry_count--;
+  pthread_mutex_unlock(&table->latch);
 }
 
+int table_size(struct table *table) {
+  pthread_mutex_lock(&table->latch);
+  size_t size = table->entry_count;
+  pthread_mutex_unlock(&table->latch);
+  return size;
+}

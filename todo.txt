@@ -12,31 +12,62 @@ Get infrastucture together to get LRU_tests running
 
   Crafting Interpreters -> Crafting Database Systems
     Really barebones dbms, but all core components
-      disk
-      buffer pool
-      indexes
-      tokenizing
-      parsing
-      binding
-      access methods
-      query planner
-      query optimizer
-      concurrency control
-      logging
-      etc
+      Introduction 
+        part 1 - SQL
+          basic - table creation/deletion.  Row insert/deletion.  Querying with SELECT, WHERE, GROUP BY, ORDER BY
+          advanced - subqueries, correlated subquries, CTE, 
+          modern - windows, cubes (for analytics)
+          HW: SQL practice
+        part 2 - DBMS configurations (make DBMS go fast)
+          primary and foreign keys
+          analyzing query plans
+          indexes
+          isolation levels
+          HW: make Postgres go fast
+        part 3 - DBMS
+          backup
+          recovery
+          concurrency levels
+      Internals
+        part 1 - storage layer
+          disk
+          replacer
+          buffer pool
+          logging
+          HW: clock sweeping replacer
+        part 2 - data structures/indexes
+          heap files
+          hash table
+          b+ tree
+          HW: clustered b+tree
+        part 3 - frontend
+          tokenizing
+          parsing
+          binding
+          hw: adding more SQL keywords
+        part 4 - query excution
+          access methods
+          query planner
+          hw: implementing more SQL functionality
+        part 5 - query optimizer
+          query optimizer
+          statistics
+          hw: improve query optimizer
+        part 5 - concurrency
+          concurrency control
+          hw: more advanced features in MVCC?
+        etc
 
-  Concurrency for table + list
-    list concurrency
-      have 2 threads continuously add/delete numbers unique to each thread (ie, thread 0 handles even and thread 1 handles odd)
-      at the same time, have all threads read their own numbers
-      finally, have all threads add their numbers and then have a single thread check that all numbers are present
-      this test should fail without multithreading handled
-    Add tests for table + list to ensure single-threaded correctness
-    Add tests for table + list concurrency
-    use rwlocks to protect data integrity on multiple accessors
+  Disk scheduler (this uses the disk manager to write files to disk)
+    how does checking/polling for completion work? (Look at the .h/c code in storage/disk_manager + disk_scheduler
+    bpm will be easier to implement if we can read/write pages 
+    Look at the disk manager that Grok wrote
 
-  Concurrency for replacer
-    write tests to ensure nothing breaks
+    Read this to see if any tips available:
+      https://www.scylladb.com/2016/04/14/io-scheduler-1/
+      https://github.com/ayende/libgavran
+
+  Buffer pool manager + page guards + disk_manager (just in-memory for now)
 
   for page guards, should have wrapper functions for _all_ functions that will use page guards
     these wrapper functions will allocate a context to allow usage of page guards before calling the implementation

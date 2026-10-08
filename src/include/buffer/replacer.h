@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <pthread.h>
 #include "buffer/table.h"
 #include "buffer/list.h"
 
@@ -11,21 +12,11 @@ typedef int frame_id_t;
 #define INVALID_FRAME_ID -1
 #define INVALID_FRAME_OFFSET SIZE_MAX
 
-/*
-struct frame;
-struct frame {
-  size_t next;
-  size_t prev;
-  frame_id_t id;
-};
-
-void frame_init(struct frame *frame, frame_id_t id);
-*/
-
 struct replacer {
   size_t capacity; // TODO remove this later - only keeping so tests don't fail
   struct list list;
   struct table table;
+  pthread_mutex_t latch;
 };
 
 void replacer_init(struct replacer *replacer, int capacity);

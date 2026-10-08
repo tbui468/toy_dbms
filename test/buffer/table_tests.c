@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <pthread.h>
 
 #include "buffer/table.h"
 
@@ -93,6 +94,66 @@ bool table_put_duplicate_key(void) {
   }
 }
 
+#define COUNT 256 * 256
+
+void *concurrency_helper0(void *arg) {
+  struct table *table = (struct table *) arg;
+  for (int i = 0; i < COUNT; i++) {
+    if (i % 2 == 0) continue;
+    table_put(table, i, i);
+  }
+
+  for (int i = 0; i < COUNT; i++) {
+    if (i % 2 == 0) continue;
+    size_t result;
+    ASSERT_EQ(table_get(table, i, &result), 1);
+  }
+
+  for (int i = 0; i < COUNT; i++) {
+    if (i % 2 == 0) continue;
+    table_delete(table, i);
+  }
+}
+
+void *concurrency_helper1(void *arg) {
+  struct table *table = (struct table *) arg;
+  for (int i = 0; i < COUNT; i++) {
+    if (i % 2 == 1) continue;
+    table_put(table, i, i);
+  }
+
+  for (int i = 0; i < COUNT; i++) {
+    if (i % 2 == 1) continue;
+    size_t result;
+    ASSERT_EQ(table_get(table, i, &result), 1);
+  }
+
+  for (int i = 0; i < COUNT; i++) {
+    if (i % 2 == 1) continue;
+    table_delete(table, i);
+  }
+}
+
+bool table_concurrency(void) {
+
+  struct table table;
+  table_init(&table, 256);
+  
+  pthread_t t0, t1;
+ 
+  pthread_create(&t0, NULL, concurrency_helper0, &table); 
+  pthread_create(&t1, NULL, concurrency_helper1, &table); 
+
+  pthread_join(t0, NULL);
+  pthread_join(t1, NULL);
+
+
+  ASSERT_EQ(table_size(&table), 0);
+
+  table_free(&table);
+  return true;
+}
+
 int main(void) {
   int tests_passed = 0;
   int total_tests = 0;
@@ -102,6 +163,7 @@ int main(void) {
   RUN_TEST(table_put_beyond_threshold);
   RUN_TEST(table_delete_beyond_threshold);
   RUN_TEST(table_put_duplicate_key)
+  RUN_TEST(table_concurrency)
 
   printf("%d/%d tests passed!\n", tests_passed, total_tests);
 }

@@ -5,7 +5,7 @@
 #include "buffer/list.h"
 
 #define ASSERT_EQ(a, b) if ((a) != (b)) { printf("[%d] Got %d but expected %d\n", __LINE__, (a), (b)); return false; }
-#define RUN_TEST(fcn) { total_tests++; tests_passed += (fcn)(); }
+#define RUN_TEST(fcn) { printf("Running %s\n", #fcn); total_tests++; tests_passed += (fcn)(); }
 
 bool list_init_free(void) {
   struct list list;
@@ -86,7 +86,7 @@ bool list_erase_beyond_capacity(void) {
   return true;
 }
 
-#define COUNT 256 * 64
+#define COUNT 256 * 256
 
 void *concurrency_helper0(void *arg) {
   struct list *list = (struct list *) arg;
@@ -113,7 +113,7 @@ void *delete_helper(void *arg) {
 
 bool list_concurrency(void) {
   struct list list;
-  list_init(&list, 8);
+  list_init(&list, COUNT / 2);
   
   pthread_t t0, t1;
  
