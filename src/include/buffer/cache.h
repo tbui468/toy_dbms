@@ -1,11 +1,10 @@
 #ifndef BPM_H
 #define BPM_H
 
+#include "storage/page.h"
+
 #include <stdlib.h>
 #include "buffer/lru.h"
-
-typedef int page_id_t;
-#define PAGE_SIZE 8192
 
 struct bpm {
   size_t size;
@@ -25,6 +24,7 @@ enum guard_type {
   GT_WRITE
 };
 
+// TODO rename to struct page, and move to page.h
 struct guard {
   enum guard_type type;
   struct bpm *bpm;

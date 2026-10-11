@@ -1,6 +1,30 @@
-Get infrastucture together to get LRU_tests running
+DBMS Course    
+  Phase 1:
+    replacer + list + table
+    disk + request
+    cache + page
 
-    Warnings on
+    Writeups for all 3 above
+      Motivation for each component in the dbms
+      Algorithms implemented
+      Implementation details
+      Implemenation improvements
+
+  CMU project 3
+
+  Phase 2:
+    Heap 
+    Hash Table
+    B+ tree
+
+    Writeups for all 3 above
+
+  CMU project 4
+
+  Phase 3:
+    ???
+
+  Warnings on
       C is a very loose language in its specification. A number of practices or patterns are now known to be risky or likely sources of bugs. Well, those code snippets might be risky, but compilers can't alert on them, becuase that would break legacy code! So compilers instead push those warning into compiler flags, that a user must explicitly turn on to see. At bare minimum, -Wall -Wextra -Wpedantic should be set. My personal set is usually -Wall -Wextra -Wpedantic -Wvla -Wfloat-equal. Depending on the program, -Waggregate-return -Wconversion can also be a good choice. Turn on as many warnings as practical, and then fix all the warnings.
 
       -fsanitize=address
@@ -12,32 +36,24 @@ Get infrastucture together to get LRU_tests running
 
   Crafting Interpreters -> Crafting Database Systems
     Really barebones dbms, but all core components
-      Introduction 
-        part 1 - SQL
-          basic - table creation/deletion.  Row insert/deletion.  Querying with SELECT, WHERE, GROUP BY, ORDER BY
-          advanced - subqueries, correlated subquries, CTE, 
-          modern - windows, cubes (for analytics)
-          HW: SQL practice
-        part 2 - DBMS configurations (make DBMS go fast)
-          primary and foreign keys
-          analyzing query plans
-          indexes
-          isolation levels
-          HW: make Postgres go fast
-        part 3 - DBMS
-          backup
-          recovery
-          concurrency levels
       Internals
+        part 0 - basic in-memory data structures
+          list
+          table
+          queue
+          concurrency
         part 1 - storage layer
           disk
           replacer
           buffer pool
-          logging
           HW: clock sweeping replacer
+        part 2 - durability (may want to complete CMU 445 before even attempting this - this is related to transactions, so may need to move this further down)
+          WAL logging
+          checkpointer
+          recovery
         part 2 - data structures/indexes
           heap files
-          hash table
+          hash table 
           b+ tree
           HW: clustered b+tree
         part 3 - frontend
@@ -58,16 +74,10 @@ Get infrastucture together to get LRU_tests running
           hw: more advanced features in MVCC?
         etc
 
-  Disk scheduler (this uses the disk manager to write files to disk)
-    how does checking/polling for completion work? (Look at the .h/c code in storage/disk_manager + disk_scheduler
-    bpm will be easier to implement if we can read/write pages 
-    Look at the disk manager that Grok wrote
+  Put disk.h test logic into util/test.h
+    use this in all tests rather than macros
 
-    Read this to see if any tips available:
-      https://www.scylladb.com/2016/04/14/io-scheduler-1/
-      https://github.com/ayende/libgavran
-
-  Buffer pool manager + page guards + disk_manager (just in-memory for now)
+  Cache and page (guard)
 
   for page guards, should have wrapper functions for _all_ functions that will use page guards
     these wrapper functions will allocate a context to allow usage of page guards before calling the implementation
@@ -80,12 +90,23 @@ Get infrastucture together to get LRU_tests running
       see bpm.h for notes on what to implement and test
       may want to implement disk manager, and pass it into bpm_init as a pointer
         alternatively, just have bpm init dm since we don't need the dm anywhere else for now (that may change if we add logging)
+
+  Write-up
+    Need to stop here and do a write up the code and ideas presented (including the purpose behind this)
+    DBMS from scratch for education
+    writeups:
+      replacer (including list + table)
+      disk manager/scheduler/request
+      buffer pool manager (including page guards)
+
+  WAL
+    a transaction manager will start / end transactions
+    on commit, a WAL will be written to disk before acknowledgement is sent back from transaction manager
+    Resources:
+      Database Design and Implementation
+      Bustub old projects that contain log/recovery project
+      CMU CS 445 lectures on this topic
       
-    disk_manager - use in-memory system for now
-      dm_init(struct dm *dm, int capacity);
-      dm_free(struct dm *dm);
-      dm_read_page(struct dm *dm, page_id_t, char* buf);
-      dm_write_page(struct dm *dm, page_id_t, const char *buf);
     
   Course Description
     developing a DBMS from first principles.  Will need to essentially write an entire
