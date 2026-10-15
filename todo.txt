@@ -1,4 +1,9 @@
-DBMS Course    
+Crafting Interpreters -> Crafting Database Systems
+  Sprint to a complete program (including concurrency and recovery)
+  Really barebones dbms, but all core components
+    SQL -> Query Planning -> Operator Execution -> File/Index -> Cache -> Disk
+      Concurrency + Recovery are cross cutting across File/Index + Cache + Disk
+
   Phase 1:
     replacer + list + table
     disk + request
@@ -24,6 +29,7 @@ DBMS Course
   Phase 3:
     ???
 
+TODO
   Warnings on
       C is a very loose language in its specification. A number of practices or patterns are now known to be risky or likely sources of bugs. Well, those code snippets might be risky, but compilers can't alert on them, becuase that would break legacy code! So compilers instead push those warning into compiler flags, that a user must explicitly turn on to see. At bare minimum, -Wall -Wextra -Wpedantic should be set. My personal set is usually -Wall -Wextra -Wpedantic -Wvla -Wfloat-equal. Depending on the program, -Waggregate-return -Wconversion can also be a good choice. Turn on as many warnings as practical, and then fix all the warnings.
 
@@ -31,99 +37,70 @@ DBMS Course
       -fsanitize=leak
       -fsanitize=undefined
 
-  Move testing code to own file in util called test.h
-    replacer_tests.c have canonical test logic since it includes test names
+    put these into some Makefile variable so that all Make commands use the same warnings
 
-  Crafting Interpreters -> Crafting Database Systems
-    Really barebones dbms, but all core components
-      Internals
-        part 0 - basic in-memory data structures
-          list
-          table
-          queue
-          concurrency
-        part 1 - storage layer
-          disk
-          replacer
-          buffer pool
-          HW: clock sweeping replacer
-        part 2 - durability (may want to complete CMU 445 before even attempting this - this is related to transactions, so may need to move this further down)
-          WAL logging
-          checkpointer
-          recovery
-        part 2 - data structures/indexes
-          heap files
-          hash table 
-          b+ tree
-          HW: clustered b+tree
-        part 3 - frontend
-          tokenizing
-          parsing
-          binding
-          hw: adding more SQL keywords
-        part 4 - query excution
-          access methods
-          query planner
-          hw: implementing more SQL functionality
-        part 5 - query optimizer
-          query optimizer
-          statistics
-          hw: improve query optimizer
-        part 5 - concurrency
-          concurrency control
-          hw: more advanced features in MVCC?
-        etc
-
-  Put disk.h test logic into util/test.h
-    use this in all tests rather than macros
+  Use FATAL + FATAL_MSG to check for system / app errors
+    list.c
+    table.c
+    replacer.c
 
   Cache and page (guard)
+    look at bpm to see API
 
-  for page guards, should have wrapper functions for _all_ functions that will use page guards
-    these wrapper functions will allocate a context to allow usage of page guards before calling the implementation
-    and then release all guards after the implentation returns.  This will allow safer guard usage
-    May need to have deeper function calls add to this stack of contexts to ensure outer functions don't lose their
-    guards when an lower function uses context.  This is starting to sounds confusing..
+    for page guards, should have wrapper functions for _all_ functions that will use page guards
+      these wrapper functions will allocate a context to allow usage of page guards before calling the implementation
+      and then release all guards after the implentation returns.  This will allow safer guard usage
+      May need to have deeper function calls add to this stack of contexts to ensure outer functions don't lose their
+      guards when an lower function uses context.  This is starting to sounds confusing..
 
-  Get basic infrastructure working before attempting multithreading since APIs need to be clearly defined
-    buffer_pool_manager and guards
       see bpm.h for notes on what to implement and test
-      may want to implement disk manager, and pass it into bpm_init as a pointer
-        alternatively, just have bpm init dm since we don't need the dm anywhere else for now (that may change if we add logging)
 
   Write-up
     Need to stop here and do a write up the code and ideas presented (including the purpose behind this)
     DBMS from scratch for education
     writeups:
       replacer (including list + table)
-      disk manager/scheduler/request
-      buffer pool manager (including page guards)
+      disk
+      cache (including page guards)
 
-  WAL
-    a transaction manager will start / end transactions
-    on commit, a WAL will be written to disk before acknowledgement is sent back from transaction manager
-    Resources:
-      Database Design and Implementation
-      Bustub old projects that contain log/recovery project
-      CMU CS 445 lectures on this topic
-      
+
+    Cache page replacement algorithms are a fun/easy place to start our database system implementation.  
+    Grabbing pages from disk is very expensive (in terms of time), so storing currently used page data in memory is ideal.  
+
+    The buffer pool manager's job is to act as a cache for the DBMS.  
+
+    Since the amount of memory is small compared to disk space, we need a way of determining which pages to keep in memory and which pages to put back into disk.  
     
-  Course Description
-    developing a DBMS from first principles.  Will need to essentially write an entire
-    DBMS anyway, so continueing on with the lru (and even writing about it) would not go 
-    to waste.
+    Page eviction algorithms often use recency or frequncy to determine which page to evict.  
+    The simpliest algorithm is to evict the the least recently used page (LRU).  
 
-    Modules
-      1. Relational Databases + SQL
-      2. Disk Manager
-      3. Buffer Pool Manager
-      4. Slotted Array Storage
-      5. Indexes
-      6. Tokenizer
-      7. Parser and Binder
-      9. Write Ahead Logging
-      8. Access Methods (including sort/join algorithms)
-      9. Query Execution
-      10. Transactions
-      11. Query Optimizations
+    Many more advanced algorithms are variants of LRU or/and least-frequently-used (LFU).  
+    For example the clock-sweep algorithm is an approximation of LRU, and the ARC algorithm uses both recency and frequency to determine which page to evict.  
 
+    We will keep things simple in order to get the entire system up and running as quick as possible, so we'll stick to the bog-standard LRU algorithm.
+
+    The LRU replacer will have a pool of frames that is can track.  A frame will be in one of three states: free, fix or unfixed.  Fixing a frame will prevent it from being replaced, ie a worker is using the in-memory page.  An unfixed frame still tracks an in-memory page, but it unused and can be evicted.  A free frame is unused and can be fixed if a page from disk needs to be brought in and used.  
+    If a new page needs to be fixed but there are no free frames remaining, an unfixed frame will evict its page data, and the new page loaded into that frame.  The LRU algorithm will choose to evict the frame that has been unfixed for the longest time.  
+
+    Our replacer implemenation will keep allocating frames if fix will called.  The responsibilty of tracking free and fixed frames will be handled by the buffer pool manager (which will be discussed in a later writeup).  The replacer will only determine which unfixed frame to evict.
+
+    !!!Need to include page id since fixing and unfixed frame doesn't make sense without this information!!!   Draw diagram - this will make it easier for me to think out the concept
+
+    [image]
+    The replacer starts with a pool of free frames.  Let's say we only have enough memory to store 5 pages in memory, ie we have 5 free frames.
+
+    [image]
+    A worker needs three pages from disk.  Three free frames (with ids 0, 1 and 2) are fixed and the page data read from disk so that the worker can do its thing.  After some time the worker is done with frame 1 and 2, and so frame 1 is unfixed followed by frame 2.
+
+    The unfixed frames are appended to a a list.  The oldest unfixed (least-recently-used) frame will always be at the front of the list, and the most recently unfixed at the end.
+
+    Now a different worker also needs 3 frames to load in 3 different pages.  Frames 3 and 4 can be taken from the free frame pool and fixed, but that leaves us short a frame.  But the unfixed frames are unused, so they can be evicted to make space for different page data.  We will evict the frame at the front of the list, frame 1, and let this worker use it (along with writing/reading page data from disk as necessary).
+
+
+
+    The API we will implement:
+      replacer_init
+      replacer_destroy
+      replacer_fix
+      replacer_unfix
+      replacer_size

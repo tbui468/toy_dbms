@@ -4,9 +4,50 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <assert.h>
 
-void queue_init(struct queue *queue, int capacity) {
-  queue->capacity = capacity;
+void request_init(struct request *request, enum request_type type, page_id_t page_id) {
+  int result = pthread_mutex_init(&request->latch, NULL);
+  if (result != 0) FATAL();
+
+  result = pthread_cond_init(&request->complete_cond, NULL);
+  if (result != 0) FATAL();
+
+  request->complete = false;
+  request->type = type;
+  request->page_id = page_id;
+  request->page_data = NULL;
+}
+
+void request_acquire_data(struct request *request, char **ptr) {
+  request->page_data = *ptr;
+  *ptr = NULL; 
+}
+
+char *request_release_data(struct request *request) {
+  char *ptr = request->page_data;
+  request->page_data = NULL;
+  return ptr;
+}
+
+void request_destroy(struct request *request) {
+  int result = pthread_mutex_destroy(&request->latch);
+  if (result != 0) FATAL();
+
+  result = pthread_cond_destroy(&request->complete_cond);
+  if (result != 0) FATAL();
+}
+
+void request_wait(struct request *request) {
+  pthread_mutex_lock(&request->latch);
+  while (!request->complete) {
+    pthread_cond_wait(&request->complete_cond, &request->latch);
+  }
+  pthread_mutex_unlock(&request->latch);
+}
+
+void queue_init(struct queue *queue) {
+  queue->capacity = QUEUE_CAPACITY;
   queue->size = 0;
   queue->front = 0;
   queue->back = 0;
@@ -89,38 +130,6 @@ void queue_close(struct queue *queue) {
   pthread_cond_broadcast(&queue->non_empty);
 }
 
-static void *handle_request(void *arg) {
-  struct disk *disk = (struct disk*) arg;
-  struct request *r;
-  while (true) {
-    struct request *r = queue_pop(&disk->requests);
-    if (!r) {
-      break;
-    }
-    printf("Handled page id :%ld\n", r->page_id);
-    r->complete = true;
-  }
-}
-
-void disk_init(struct disk *disk, int request_capacity, const char *path) {
-  queue_init(&disk->requests, request_capacity);
-  pthread_create(&disk->request_handler, NULL, handle_request, disk);
-  disk->fd = open(path, O_CREAT | O_RDWR, 0644);
-  if (disk->fd == -1) FATAL();
-}
-
-void disk_destroy(struct disk *disk) {
-  queue_close(&disk->requests);
-  pthread_join(disk->request_handler, NULL);
-  queue_destroy(&disk->requests);
-  close(disk->fd);
-}
-
-void disk_schedule(struct disk *disk, struct request *request) {
-  //while (!queue_push(&disk->requests, request))
-  //  ;
-}
-
 static void disk_write_page(struct disk *disk, page_id_t page_id, const char *page_data) {
   size_t written = 0;
   while (written < PAGE_SIZE) {
@@ -147,3 +156,55 @@ static void disk_read_page(struct disk *disk, page_id_t page_id, char *page_data
     read += result;
   }
 }
+
+static void *handle_request(void *arg) {
+  struct disk *disk = (struct disk*) arg;
+  struct request *r;
+  while (true) {
+    struct request *r = queue_pop(&disk->requests);
+    if (!r) {
+      break;
+    }
+
+    switch (r->type) {
+    case RT_READ:
+      disk_read_page(disk, r->page_id, r->page_data);
+      break;
+    case RT_WRITE:
+      disk_write_page(disk, r->page_id, r->page_data);
+      break;
+    case RT_FLUSH:
+      disk_write_page(disk, r->page_id, r->page_data);
+      int result = fdatasync(disk->fd);
+      if (result != 0) FATAL(); 
+      break;
+    default:
+      assert(false);
+      break; 
+    }
+
+    pthread_mutex_lock(&r->latch);
+    r->complete = true;
+    pthread_mutex_unlock(&r->latch);
+    pthread_cond_signal(&r->complete_cond);
+  }
+}
+
+void disk_init(struct disk *disk, const char *path) {
+  queue_init(&disk->requests);
+  pthread_create(&disk->request_handler, NULL, handle_request, disk);
+  disk->fd = open(path, O_CREAT | O_RDWR, 0644);
+  if (disk->fd == -1) FATAL();
+}
+
+void disk_destroy(struct disk *disk) {
+  queue_close(&disk->requests);
+  pthread_join(disk->request_handler, NULL);
+  queue_destroy(&disk->requests);
+  close(disk->fd);
+}
+
+void disk_schedule(struct disk *disk, struct request *request) {
+  queue_push(&disk->requests, request);
+}
+

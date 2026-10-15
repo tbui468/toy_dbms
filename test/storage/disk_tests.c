@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include <string.h>
 
 #include "storage/disk.h"
 #include "util/test.h"
 
 bool queue_init_free(void) {
   struct queue queue;
-  queue_init(&queue, 8);
+  queue_init(&queue);
   ASSERT_EQ((int) queue.size, 0);
   ASSERT_EQ((int) queue.capacity, 8);
   queue_destroy(&queue);
@@ -16,7 +17,7 @@ bool queue_init_free(void) {
 
 bool queue_push_test(void) {
   struct queue queue;
-  queue_init(&queue, 8);
+  queue_init(&queue);
   struct request r;
   for (int i = 0; i < 8; i++) {
     queue_push(&queue, &r);
@@ -29,7 +30,7 @@ bool queue_push_test(void) {
 
 bool queue_pop_test(void) {
   struct queue queue;
-  queue_init(&queue, 8);
+  queue_init(&queue);
   struct request requests[8];
   for (int i = 0; i < 8; i++) {
     requests[i].page_id = i;
@@ -78,7 +79,7 @@ void *concurrency_consumer(void *arg) {
 
 bool queue_concurrency(void) {
   struct queue queue;
-  queue_init(&queue, COUNT / 2);
+  queue_init(&queue);
   
   pthread_t t0, t1, t2;
 
@@ -116,7 +117,62 @@ bool queue_concurrency(void) {
 
 bool disk_init_free(void) {
   struct disk disk;
-  disk_init(&disk, 8, "test.db");
+  disk_init(&disk, "test.db");
+  disk_destroy(&disk);
+  return true;
+}
+
+#define REQUEST_COUNT 26
+
+bool disk_schedule_requests(void) {
+  struct disk disk;
+  disk_init(&disk, "test.db");
+
+  char *data[REQUEST_COUNT];
+  for (int i = 0; i < REQUEST_COUNT; i++) {
+    data[i] = malloc(PAGE_SIZE);
+    memset(data[i], 'a' + i, PAGE_SIZE);
+  }
+
+  struct request requests[REQUEST_COUNT];
+  for (int i = 0; i < REQUEST_COUNT; i++) {
+    request_init(&requests[i], RT_WRITE, i);
+    request_acquire_data(&requests[i], &data[i]);
+    disk_schedule(&disk, &requests[i]);
+  }
+  
+  for (int i = 0; i < REQUEST_COUNT; i++) {
+    request_wait(&requests[i]);
+    data[i] = request_release_data(&requests[i]);
+    request_destroy(&requests[i]);
+  }
+
+  for (int i = 0; i < REQUEST_COUNT; i++) {
+    memset(data[i], 0, PAGE_SIZE);
+  }
+
+  //read back pages to ensure same data
+  for (int i = 0; i < REQUEST_COUNT; i++) {
+    request_init(&requests[i], RT_READ, i);
+    request_acquire_data(&requests[i], &data[i]);
+    disk_schedule(&disk, &requests[i]);
+  }
+
+  for (int i = 0; i < REQUEST_COUNT; i++) {
+    request_wait(&requests[i]);
+    data[i] = request_release_data(&requests[i]);
+    request_destroy(&requests[i]);
+  }
+
+  for (int i = 0; i < REQUEST_COUNT; i++) {
+    int expected = 'a' + i;
+    for (int j = 0; j < PAGE_SIZE; j++) {
+      int actual = data[i][j];
+      ASSERT_EQ(actual, expected);
+    }
+  }
+
+
   disk_destroy(&disk);
   return true;
 }
@@ -131,6 +187,7 @@ int main(void) {
   RUN_TEST(queue_concurrency);
 
   RUN_TEST(disk_init_free);
+  RUN_TEST(disk_schedule_requests);
 
   printf("%d/%d tests passed!\n", tests_passed, total_tests);
 }
