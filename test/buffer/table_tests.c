@@ -3,9 +3,7 @@
 #include <pthread.h>
 
 #include "buffer/table.h"
-
-#define ASSERT_EQ(a, b) if ((a) != (b)) { printf("[%d] Got %d but expected %d\n", __LINE__, (a), (b)); return false; }
-#define RUN_TEST(fcn) { total_tests++; tests_passed += (fcn)(); }
+#include "util/test.h"
 
 bool table_init_free(void) {
   struct table table;
@@ -92,6 +90,8 @@ bool table_put_duplicate_key(void) {
     ASSERT_EQ((int) value, i);
     ASSERT_EQ((int) table.entry_count, 1);
   }
+
+  return true;
 }
 
 #define COUNT 256 * 256
@@ -113,6 +113,8 @@ void *concurrency_helper0(void *arg) {
     if (i % 2 == 0) continue;
     table_delete(table, i);
   }
+
+  return NULL;
 }
 
 void *concurrency_helper1(void *arg) {
@@ -132,6 +134,8 @@ void *concurrency_helper1(void *arg) {
     if (i % 2 == 1) continue;
     table_delete(table, i);
   }
+
+  return NULL;
 }
 
 bool table_concurrency(void) {

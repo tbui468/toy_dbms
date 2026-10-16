@@ -8,22 +8,20 @@
 #include <stdbool.h>
 #include <pthread.h>
 
-#define INVALID_NODE_OFFSET SIZE_MAX
-typedef size_t node_id_t;
+#define INVALID_NODE_OFFSET UINT32_MAX
+typedef uint32_t node_id_t;
 
 struct node {
-  size_t next;
-  size_t prev;
-  node_id_t id;
+  node_id_t next;
+  node_id_t prev;
 };
 
 struct list {
-  size_t capacity;
-  size_t size;
-  size_t freelist;  
+  node_id_t capacity;
+  node_id_t size;
 
-  size_t front;
-  size_t back;
+  node_id_t front;
+  node_id_t back;
 
   struct node *nodes;
 
@@ -31,12 +29,12 @@ struct list {
 };
 
 
-void list_init(struct list *list, int default_capacity);
+void list_init(struct list *list, int capacity);
 void list_free(struct list *list);
 int list_size(struct list *list);
 // returns internal offset to allow quick removal
-size_t list_append(struct list *list, node_id_t id);
-void list_erase(struct list *list, size_t off);
+void list_append(struct list *list, node_id_t id);
+void list_erase(struct list *list, node_id_t id);
 size_t list_pop_front(struct list *list);
 bool list_contains(struct list *list, node_id_t id);
 

@@ -159,7 +159,6 @@ static void disk_read_page(struct disk *disk, page_id_t page_id, char *page_data
 
 static void *handle_request(void *arg) {
   struct disk *disk = (struct disk*) arg;
-  struct request *r;
   while (true) {
     struct request *r = queue_pop(&disk->requests);
     if (!r) {
@@ -188,6 +187,8 @@ static void *handle_request(void *arg) {
     pthread_mutex_unlock(&r->latch);
     pthread_cond_signal(&r->complete_cond);
   }
+
+  return NULL;
 }
 
 void disk_init(struct disk *disk, const char *path) {

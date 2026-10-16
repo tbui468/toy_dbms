@@ -3,9 +3,7 @@
 #include <pthread.h>
 
 #include "buffer/list.h"
-
-#define ASSERT_EQ(a, b) if ((a) != (b)) { printf("[%d] Got %d but expected %d\n", __LINE__, (a), (b)); return false; }
-#define RUN_TEST(fcn) { printf("Running %s\n", #fcn); total_tests++; tests_passed += (fcn)(); }
+#include "util/test.h"
 
 bool list_init_free(void) {
   struct list list;
@@ -29,55 +27,20 @@ bool list_append_within_capacity(void) {
   return true;
 }
 
-bool list_append_beyond_capacity(void) {
-  int cap = 8;
-  struct list list;
-  list_init(&list, cap);
-  for (int i = 0; i < cap * 10; i++) {
-    list_append(&list, i);
-    ASSERT_EQ((int) list.size, i + 1);
-    ASSERT_EQ(list_contains(&list, i), 1);
-  }
-  list_free(&list);
-  return true;
-}
-
 bool list_erase_within_capacity(void) {
   int cap = 8;
   struct list list;
   list_init(&list, cap);
-  int offsets[8];
+
   for (int i = 0; i < cap; i++) {
-    offsets[i] = list_append(&list, i);
+    list_append(&list, i);
     ASSERT_EQ((int) list.size, i + 1);
     ASSERT_EQ(list_contains(&list, i), 1);
   }
 
   for (int i = 0; i < cap; i++) {
-    list_erase(&list, offsets[i]);
+    list_erase(&list, i);
     ASSERT_EQ((int) list.size, 8 - (i + 1));
-    ASSERT_EQ(!list_contains(&list, i), 1);
-  }
-  
-
-  list_free(&list);
-  return true;
-}
-
-bool list_erase_beyond_capacity(void) {
-  int cap = 8;
-  struct list list;
-  list_init(&list, cap);
-  int offsets[32];
-  for (int i = 0; i < 32; i++) {
-    offsets[i] = list_append(&list, i);
-    ASSERT_EQ((int) list.size, i + 1);
-    ASSERT_EQ(list_contains(&list, i), 1);
-  }
-
-  for (int i = 0; i < 32; i++) {
-    list_erase(&list, offsets[i]);
-    ASSERT_EQ((int) list.size, 32 - (i + 1));
     ASSERT_EQ(!list_contains(&list, i), 1);
   }
   
@@ -90,18 +53,20 @@ bool list_erase_beyond_capacity(void) {
 
 void *concurrency_helper0(void *arg) {
   struct list *list = (struct list *) arg;
-  for (int i = 0; i < COUNT; i++) {
+  for (size_t i = 0; i < COUNT; i++) {
     if (i % 2 == 0) continue;
     list_append(list, i);
   }
+  return NULL;
 }
 
 void *concurrency_helper1(void *arg) {
   struct list *list = (struct list *) arg;
-  for (int i = 0; i < COUNT; i++) {
+  for (size_t i = 0; i < COUNT; i++) {
     if (i % 2 == 1) continue;
     list_append(list, i);
   }
+  return NULL;
 }
 
 void *delete_helper(void *arg) {
@@ -109,11 +74,12 @@ void *delete_helper(void *arg) {
   while (list_size(list) > 0) {
     list_pop_front(list);
   }
+  return NULL;
 }
 
 bool list_concurrency(void) {
   struct list list;
-  list_init(&list, COUNT / 2);
+  list_init(&list, COUNT);
   
   pthread_t t0, t1;
  
@@ -123,7 +89,7 @@ bool list_concurrency(void) {
   pthread_join(t0, NULL);
   pthread_join(t1, NULL);
 
-  for (int i = 0; i < COUNT; i++) {
+  for (size_t i = 0; i < COUNT; i++) {
     ASSERT_EQ(list_contains(&list, i), 1);
   }
   ASSERT_EQ(list_size(&list), COUNT);
@@ -146,9 +112,7 @@ int main(void) {
 
   RUN_TEST(list_init_free);
   RUN_TEST(list_append_within_capacity);
-  RUN_TEST(list_append_beyond_capacity);
   RUN_TEST(list_erase_within_capacity);
-  RUN_TEST(list_erase_beyond_capacity);
   RUN_TEST(list_concurrency);
 
   printf("%d/%d tests passed!\n", tests_passed, total_tests);

@@ -64,17 +64,20 @@ void *concurrency_producer(void *arg) {
     requests[i].page_id = i;
     queue_push(queue, &requests[i]);
   }
+
+  return NULL;
 }
 
 void *concurrency_consumer(void *arg) {
   struct data *data = (struct data *) arg;
   struct queue *queue = data->queue;
-  struct request *requests = data->requests;
   size_t total = (COUNT * (COUNT - 1)) / 2;
   while (total != 0) {
     struct request *r = queue_pop(queue);
     total -= r->page_id;
   }
+
+  return NULL;
 }
 
 bool queue_concurrency(void) {

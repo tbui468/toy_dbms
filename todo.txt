@@ -4,10 +4,48 @@ Crafting Interpreters -> Crafting Database Systems
     SQL -> Query Planning -> Operator Execution -> File/Index -> Cache -> Disk
       Concurrency + Recovery are cross cutting across File/Index + Cache + Disk
 
-  Phase 1:
-    replacer + list + table
-    disk + request
-    cache + page
+    Get a storage engine that can _replace_ the postgres one using table access methods (TAM) API
+
+  Phase 1: Build up from OS level (which we can use to test)
+   
+    disk 
+      disk
+      scheduler + request
+  
+    cache
+      replacer + list + table
+      cache + page
+
+    access
+      heap
+      hash table (to use an index)
+
+  Phase 2: Build down from SQL statement level (which we can use to test)
+  
+    parsing
+      tokeninzer
+      parser
+      binder
+
+    query planner (may want to just skip straight to execution for now and come back to this later)
+      query rewrite (just do something simple?)
+      query optimization
+
+    query execution
+      scan
+      filter
+      sort
+      etc
+
+    logging
+
+    concurrency
+
+  C wishlist
+    namespaces
+    metaprogramming (to allow something like templates/generics)
+    methods (similar to golang)
+
 
     Writeups for all 3 above
       Motivation for each component in the dbms
@@ -15,27 +53,17 @@ Crafting Interpreters -> Crafting Database Systems
       Implementation details
       Implemenation improvements
 
-  CMU project 3
-
-  Phase 2:
-    Heap 
-    Hash Table
-    B+ tree
-
-    Writeups for all 3 above
-
-  CMU project 4
-
-  Phase 3:
-    ???
-
 TODO
-  Warnings on
-      C is a very loose language in its specification. A number of practices or patterns are now known to be risky or likely sources of bugs. Well, those code snippets might be risky, but compilers can't alert on them, becuase that would break legacy code! So compilers instead push those warning into compiler flags, that a user must explicitly turn on to see. At bare minimum, -Wall -Wextra -Wpedantic should be set. My personal set is usually -Wall -Wextra -Wpedantic -Wvla -Wfloat-equal. Depending on the program, -Waggregate-return -Wconversion can also be a good choice. Turn on as many warnings as practical, and then fix all the warnings.
+  -Wconversion is creating a lot of errors - go fix them first
+      turned this off since fixing above issue is going to require massive refactor anyway, so doing this later is better
 
-      -fsanitize=address
-      -fsanitize=leak
-      -fsanitize=undefined
+  Add this once all warnings are fixed
+    -Werror
+
+  Add these sanitizers
+    -fsanitize=address
+    -fsanitize=leak
+    -fsanitize=undefined
 
     put these into some Makefile variable so that all Make commands use the same warnings
 
@@ -55,7 +83,13 @@ TODO
 
       see bpm.h for notes on what to implement and test
 
-  Write-up
+  Ask AI to write extra tests for each module that I may have not tested thoroughly (edge cases, race conditions, scaling)
+
+  Write-up (have AI write a .md file description) of codebase
+    post on github, pin project, and add link on github.io website
+    Stop here and go work on project 3
+    Can save deeper writeup for actual curriculum
+    
     Need to stop here and do a write up the code and ideas presented (including the purpose behind this)
     DBMS from scratch for education
     writeups:

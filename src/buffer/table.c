@@ -12,7 +12,7 @@ static void bucket_free(struct bucket *bucket) {
 }
 
 static bool bucket_put(struct bucket *bucket, size_t key, size_t value) {
-  for (int i = 0; i < bucket->count; i++) {
+  for (size_t i = 0; i < bucket->count; i++) {
     if (bucket->entries[i].key == key) {
       bucket->entries[i].value = value;
       return false;
@@ -30,7 +30,7 @@ static bool bucket_put(struct bucket *bucket, size_t key, size_t value) {
 }
 
 static bool bucket_get(struct bucket *bucket, size_t key, size_t *value) {
-  for (int i = 0; i < bucket->count; i++) {
+  for (size_t i = 0; i < bucket->count; i++) {
     if (bucket->entries[i].key == key) {
       *value = bucket->entries[i].value;
       return true;
@@ -41,7 +41,7 @@ static bool bucket_get(struct bucket *bucket, size_t key, size_t *value) {
 }
 
 static void bucket_delete(struct bucket *bucket, size_t key) {
-  for (int i = 0; i < bucket->count; i++) {
+  for (size_t i = 0; i < bucket->count; i++) {
     if (bucket->entries[i].key == key) {
       bucket->entries[i] = bucket->entries[bucket->count - 1];
       bucket->count--;
@@ -56,7 +56,7 @@ void table_init(struct table *table, size_t bucket_count) {
   table->bucket_count = bucket_count;
   table->entry_count = 0;
   table->buckets = malloc(bucket_count * sizeof(struct bucket));
-  for (int i = 0; i < bucket_count; i++) {
+  for (size_t i = 0; i < bucket_count; i++) {
     bucket_init(table->buckets + i);
   }
 
@@ -64,7 +64,7 @@ void table_init(struct table *table, size_t bucket_count) {
 }
 
 void table_free(struct table *table) {
-  for (int i = 0; i < table->bucket_count; i++) {
+  for (size_t i = 0; i < table->bucket_count; i++) {
     bucket_free(table->buckets + i);
   }
   free(table->buckets);
@@ -79,9 +79,9 @@ static void table_resize(struct table *old_table) {
   struct table new_table;
   table_init(&new_table, old_table->bucket_count * 2);
 
-  for (int i = 0; i < old_table->bucket_count; i++) {
+  for (size_t i = 0; i < old_table->bucket_count; i++) {
     struct bucket *bucket = &old_table->buckets[i];
-    for (int j = 0; j < bucket->count; j++) {
+    for (size_t j = 0; j < bucket->count; j++) {
       size_t key = bucket->entries[j].key;
       size_t value = bucket->entries[j].value;
       table_put(&new_table, key, value);

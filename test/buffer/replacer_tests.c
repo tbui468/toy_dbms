@@ -3,9 +3,7 @@
 #include <pthread.h>
 
 #include "buffer/replacer.h"
-
-#define ASSERT_EQ(a, b) if ((a) != (b)) { printf("[%d] Got %d but expected %d\n", __LINE__, (a), (b)); return false; }
-#define RUN_TEST(fcn) { printf("Running %s\n", #fcn); total_tests++; tests_passed += (fcn)(); }
+#include "util/test.h"
 
 bool replacer_init_free(void) {
   int cap = 8;
@@ -146,6 +144,8 @@ void *concurrency_helper(void *arg) {
     if (i % 2 != id) continue;
     replacer_fix(replacer, i);
   }
+
+  return NULL;
 }
 
 void *concurrency_evictor(void *arg) {
@@ -155,6 +155,7 @@ void *concurrency_evictor(void *arg) {
     if (frame == INVALID_FRAME_ID) break;
     ASSERT_EQ(frame < COUNT / 2, 1);
   }
+  return NULL;
 }
 
 bool replacer_concurrency(void) {
