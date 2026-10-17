@@ -7,10 +7,9 @@
 #include <assert.h>
 
 void request_init(struct request *request, enum request_type type, page_id_t page_id) {
-  int result = pthread_mutex_init(&request->latch, NULL);
-  if (result != 0) FATAL();
+  latch_init(&request->latch);
 
-  result = pthread_cond_init(&request->complete_cond, NULL);
+  int result = pthread_cond_init(&request->complete_cond, NULL);
   if (result != 0) FATAL();
 
   request->complete = false;
@@ -31,19 +30,18 @@ char *request_release_data(struct request *request) {
 }
 
 void request_destroy(struct request *request) {
-  int result = pthread_mutex_destroy(&request->latch);
-  if (result != 0) FATAL();
+  latch_destroy(&request->latch);
 
-  result = pthread_cond_destroy(&request->complete_cond);
+  int result = pthread_cond_destroy(&request->complete_cond);
   if (result != 0) FATAL();
 }
 
 void request_wait(struct request *request) {
-  pthread_mutex_lock(&request->latch);
+  latch_lock(&request->latch);
   while (!request->complete) {
     pthread_cond_wait(&request->complete_cond, &request->latch);
   }
-  pthread_mutex_unlock(&request->latch);
+  latch_unlock(&request->latch);
 }
 
 void queue_init(struct queue *queue) {
@@ -78,13 +76,13 @@ void queue_destroy(struct queue *queue) {
   if (result != 0) FATAL();
 }
 void queue_push(struct queue *queue, struct request *request) {
-  pthread_mutex_lock(&queue->latch);
+  latch_lock(&queue->latch);
   while (queue->size == queue->capacity && !queue->closed) {
     pthread_cond_wait(&queue->non_full, &queue->latch);
   }
 
   if (queue->closed) {
-    pthread_mutex_unlock(&queue->latch);
+    latch_unlock(&queue->latch);
     return;
   }
 
@@ -94,11 +92,11 @@ void queue_push(struct queue *queue, struct request *request) {
     queue->back = 0;
   }
   queue->size++;
-  pthread_mutex_unlock(&queue->latch);
+  latch_unlock(&queue->latch);
   pthread_cond_signal(&queue->non_empty);
 }
 struct request* queue_pop(struct queue *queue) {
-  pthread_mutex_lock(&queue->latch);
+  latch_lock(&queue->latch);
 
   while (queue->size == 0 && !queue->closed) {
     pthread_cond_wait(&queue->non_empty, &queue->latch);
@@ -106,7 +104,7 @@ struct request* queue_pop(struct queue *queue) {
 
   // if queue->size > 0, let the worker finish writing requests to disk before exiting
   if (queue->closed && queue->size == 0) {
-    pthread_mutex_unlock(&queue->latch);
+    latch_unlock(&queue->latch);
     return NULL;
   }
 
@@ -116,15 +114,15 @@ struct request* queue_pop(struct queue *queue) {
     queue->front = 0;
   }
   queue->size--;
-  pthread_mutex_unlock(&queue->latch);
+  latch_unlock(&queue->latch);
   pthread_cond_signal(&queue->non_full);
   return request;
 }
 
 void queue_close(struct queue *queue) {
-  pthread_mutex_lock(&queue->latch);
+  latch_lock(&queue->latch);
   queue->closed = true;
-  pthread_mutex_unlock(&queue->latch);
+  latch_unlock(&queue->latch);
 
   pthread_cond_broadcast(&queue->non_full);
   pthread_cond_broadcast(&queue->non_empty);
@@ -184,9 +182,9 @@ static void *handle_request(void *arg) {
       break; 
     }
 
-    pthread_mutex_lock(&r->latch);
+    latch_lock(&r->latch);
     r->complete = true;
-    pthread_mutex_unlock(&r->latch);
+    latch_unlock(&r->latch);
     pthread_cond_signal(&r->complete_cond);
   }
 

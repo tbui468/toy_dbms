@@ -54,19 +54,21 @@ Crafting Interpreters -> Crafting Database Systems
       Implemenation improvements
 
 TODO
-  disk/
+  storage/
     disk.c
+    memory.c //extra
+    cloud.c //extra
     scheduler.c  
   cache/
     list.c
     table.c
     replacer.c
     cache.c 
-
-  Use FATAL + FATAL_MSG to check for system / app errors
-    list.c
-    table.c
-    replacer.c
+    guard.c
+  access/
+    heap.c
+    hash.c
+    tree.c //extra
 
   Cache and page (guard)
     look at bpm to see API

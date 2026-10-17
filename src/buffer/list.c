@@ -1,12 +1,12 @@
 #include "buffer/list.h"
+#include "util/util.h"
 
 void list_init(struct list *list, uint32_t capacity) {
   assert(capacity > 0);
   list->capacity = capacity;
   list->nodes = malloc(list->capacity * sizeof(struct node));
-  if (!list->nodes) {
-    exit(1);
-  }
+  if (!list->nodes) FATAL();
+
   for (frame_id_t i = 0; i < capacity; i++) {
     list->nodes[i].next = INVALID_FRAME_ID;
     list->nodes[i].prev = INVALID_FRAME_ID;
@@ -15,18 +15,18 @@ void list_init(struct list *list, uint32_t capacity) {
 
   list->front = INVALID_FRAME_ID;
   list->back = INVALID_FRAME_ID;
-  pthread_mutex_init(&list->latch, NULL);
+  latch_init(&list->latch);
 }
 
 void list_free(struct list *list) {
   free(list->nodes);
-  pthread_mutex_destroy(&list->latch);
+  latch_destroy(&list->latch);
 }
 
 uint32_t list_size(struct list *list) {
-  pthread_mutex_lock(&list->latch);
+  latch_lock(&list->latch);
   uint32_t size = list->size;
-  pthread_mutex_unlock(&list->latch);
+  latch_unlock(&list->latch);
   return size;
 }
 
@@ -34,7 +34,7 @@ void list_append(struct list *list, frame_id_t id) {
   assert(id < list->capacity);
   assert(!list_contains(list, id));
 
-  pthread_mutex_lock(&list->latch);
+  latch_lock(&list->latch);
 
   struct node *node = &list->nodes[id];
   node->next = INVALID_FRAME_ID;
@@ -44,7 +44,7 @@ void list_append(struct list *list, frame_id_t id) {
     list->front = id;
     node->prev = INVALID_FRAME_ID;
     list->size++;
-    pthread_mutex_unlock(&list->latch);
+    latch_unlock(&list->latch);
     return;
   }
 
@@ -54,7 +54,7 @@ void list_append(struct list *list, frame_id_t id) {
   list->back = id;
 
   list->size++;
-  pthread_mutex_unlock(&list->latch);
+  latch_unlock(&list->latch);
   return;
 }
 
@@ -82,31 +82,31 @@ static void list_do_erase(struct list *list, frame_id_t id) {
 }
 
 void list_erase(struct list *list, frame_id_t id) {
-  pthread_mutex_lock(&list->latch);
+  latch_lock(&list->latch);
   list_do_erase(list, id);
-  pthread_mutex_unlock(&list->latch);
+  latch_unlock(&list->latch);
 }
 
 frame_id_t list_pop_front(struct list *list) {
-  pthread_mutex_lock(&list->latch);
+  latch_lock(&list->latch);
   if (list->front == INVALID_FRAME_ID) {
-    pthread_mutex_unlock(&list->latch);
+    latch_unlock(&list->latch);
     return INVALID_FRAME_ID;
   }
   frame_id_t value = list->front;
   list_do_erase(list, list->front); 
-  pthread_mutex_unlock(&list->latch);
+  latch_unlock(&list->latch);
   return value;
 }
 
 bool list_contains(struct list *list, frame_id_t id) {
-  pthread_mutex_lock(&list->latch);
+  latch_lock(&list->latch);
 
   struct node *node = &list->nodes[id];
   bool unused = node->next == INVALID_FRAME_ID &&
                 node->prev == INVALID_FRAME_ID &&
                 list->front != id;
 
-  pthread_mutex_unlock(&list->latch);
+  latch_unlock(&list->latch);
   return !unused;
 }

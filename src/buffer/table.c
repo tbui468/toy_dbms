@@ -1,4 +1,5 @@
 #include "buffer/table.h"
+#include "util/util.h"
 #include <stdio.h>
 
 static void bucket_init(struct bucket *bucket) {
@@ -22,6 +23,7 @@ static bool bucket_put(struct bucket *bucket, frame_id_t key, frame_id_t value) 
   if (bucket->count == bucket->capacity) {
       bucket->capacity = bucket->capacity == 0 ? 8 : bucket->capacity * 2;
       bucket->entries = realloc(bucket->entries, bucket->capacity * sizeof(struct entry));
+      if (!bucket->entries) FATAL();
   }
 
   bucket->entries[bucket->count] = (struct entry) { .key = key, .value = value };
@@ -56,11 +58,13 @@ void table_init(struct table *table, uint32_t bucket_count) {
   table->bucket_count = bucket_count;
   table->entry_count = 0;
   table->buckets = malloc(bucket_count * sizeof(struct bucket));
+  if (!table->buckets) FATAL();
+
   for (uint32_t i = 0; i < bucket_count; i++) {
     bucket_init(table->buckets + i);
   }
 
-  pthread_mutex_init(&table->latch, NULL);
+  latch_init(&table->latch);
 }
 
 void table_free(struct table *table) {
@@ -68,7 +72,7 @@ void table_free(struct table *table) {
     bucket_free(table->buckets + i);
   }
   free(table->buckets);
-  pthread_mutex_destroy(&table->latch);
+  latch_destroy(&table->latch);
 }
 
 static inline uint32_t hash(struct table *table, frame_id_t key) {
@@ -88,14 +92,22 @@ static void table_resize(struct table *old_table) {
     }
   }
 
-  table_free(old_table);
+  //free old table heap allocations
+  for (uint32_t i = 0; i < old_table->bucket_count; i++) {
+    bucket_free(old_table->buckets + i);
+  }
+  free(old_table->buckets);
+
+  //copy new table heap allocations
   old_table->bucket_count = new_table.bucket_count;
   old_table->entry_count = new_table.entry_count;
   old_table->buckets = new_table.buckets;
+
+  latch_destroy(&new_table.latch);
 }
 
 void table_put(struct table *table, frame_id_t key, frame_id_t value) {
-  pthread_mutex_lock(&table->latch);
+  latch_lock(&table->latch);
   uint32_t bucket = hash(table, key);
   table->entry_count += bucket_put(table->buckets + bucket, key, value);
 
@@ -104,28 +116,28 @@ void table_put(struct table *table, frame_id_t key, frame_id_t value) {
   if (table->entry_count > load_factor) {
     table_resize(table);
   }
-  pthread_mutex_unlock(&table->latch);
+  latch_unlock(&table->latch);
 }
 
 bool table_get(struct table *table, frame_id_t key, frame_id_t *value) {
-  pthread_mutex_lock(&table->latch);
+  latch_lock(&table->latch);
   uint32_t bucket = hash(table, key);
   bool result = bucket_get(table->buckets + bucket, key, value);
-  pthread_mutex_unlock(&table->latch);
+  latch_unlock(&table->latch);
   return result;
 }
 
 void table_delete(struct table *table, frame_id_t key) {
-  pthread_mutex_lock(&table->latch);
+  latch_lock(&table->latch);
   uint32_t bucket = hash(table, key);
   bucket_delete(table->buckets + bucket, key);
   table->entry_count--;
-  pthread_mutex_unlock(&table->latch);
+  latch_unlock(&table->latch);
 }
 
 uint32_t table_size(struct table *table) {
-  pthread_mutex_lock(&table->latch);
+  latch_lock(&table->latch);
   uint32_t size = table->entry_count;
-  pthread_mutex_unlock(&table->latch);
+  latch_unlock(&table->latch);
   return size;
 }
