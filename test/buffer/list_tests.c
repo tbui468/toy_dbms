@@ -15,12 +15,12 @@ bool list_init_free(void) {
 }
 
 bool list_append_within_capacity(void) {
-  int cap = 8;
+  frame_id_t cap = 8;
   struct list list;
   list_init(&list, cap);
-  for (int i = 0; i < cap; i++) {
+  for (frame_id_t i = 0; i < cap; i++) {
     list_append(&list, i);
-    ASSERT_EQ((int) list.size, i + 1);
+    ASSERT_EQ(list.size, i + 1);
     ASSERT_EQ(list_contains(&list, i), 1);
   }
   list_free(&list);
@@ -28,19 +28,19 @@ bool list_append_within_capacity(void) {
 }
 
 bool list_erase_within_capacity(void) {
-  int cap = 8;
+  frame_id_t cap = 8;
   struct list list;
   list_init(&list, cap);
 
-  for (int i = 0; i < cap; i++) {
+  for (frame_id_t i = 0; i < cap; i++) {
     list_append(&list, i);
-    ASSERT_EQ((int) list.size, i + 1);
+    ASSERT_EQ(list.size, i + 1);
     ASSERT_EQ(list_contains(&list, i), 1);
   }
 
-  for (int i = 0; i < cap; i++) {
+  for (frame_id_t i = 0; i < cap; i++) {
     list_erase(&list, i);
-    ASSERT_EQ((int) list.size, 8 - (i + 1));
+    ASSERT_EQ(list.size, 8 - (i + 1));
     ASSERT_EQ(!list_contains(&list, i), 1);
   }
   
@@ -53,7 +53,7 @@ bool list_erase_within_capacity(void) {
 
 void *concurrency_helper0(void *arg) {
   struct list *list = (struct list *) arg;
-  for (size_t i = 0; i < COUNT; i++) {
+  for (frame_id_t i = 0; i < COUNT; i++) {
     if (i % 2 == 0) continue;
     list_append(list, i);
   }
@@ -62,7 +62,7 @@ void *concurrency_helper0(void *arg) {
 
 void *concurrency_helper1(void *arg) {
   struct list *list = (struct list *) arg;
-  for (size_t i = 0; i < COUNT; i++) {
+  for (frame_id_t i = 0; i < COUNT; i++) {
     if (i % 2 == 1) continue;
     list_append(list, i);
   }
@@ -89,7 +89,7 @@ bool list_concurrency(void) {
   pthread_join(t0, NULL);
   pthread_join(t1, NULL);
 
-  for (size_t i = 0; i < COUNT; i++) {
+  for (frame_id_t i = 0; i < COUNT; i++) {
     ASSERT_EQ(list_contains(&list, i), 1);
   }
   ASSERT_EQ(list_size(&list), COUNT);

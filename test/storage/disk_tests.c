@@ -32,14 +32,14 @@ bool queue_pop_test(void) {
   struct queue queue;
   queue_init(&queue);
   struct request requests[8];
-  for (int i = 0; i < 8; i++) {
+  for (page_id_t i = 0; i < 8; i++) {
     requests[i].page_id = i;
     queue_push(&queue, &requests[i]);
   }
-  for (int i = 0; i < 8; i++) {
+  for (page_id_t i = 0; i < 8; i++) {
     struct request *r = queue_pop(&queue);
     ASSERT_EQ(r != NULL, true);
-    ASSERT_EQ((int) r->page_id, i);
+    ASSERT_EQ(r->page_id, i);
   }
   queue_destroy(&queue);
   return true;
@@ -49,16 +49,16 @@ bool queue_pop_test(void) {
 
 struct data {
   struct queue *queue;
-  int id;
+  uint32_t id;
   struct request *requests;
 };
 
 void *concurrency_producer(void *arg) {
   struct data *data = (struct data *) arg;
   struct queue *queue = data->queue;
-  int id = data->id;
+  uint32_t id = data->id;
   struct request *requests = data->requests;
-  for (int i = 0; i < COUNT; i++) {
+  for (page_id_t i = 0; i < COUNT; i++) {
     if (i % 2 != id) continue;
 
     requests[i].page_id = i;
@@ -138,7 +138,7 @@ bool disk_schedule_requests(void) {
   }
 
   struct request requests[REQUEST_COUNT];
-  for (int i = 0; i < REQUEST_COUNT; i++) {
+  for (page_id_t i = 0; i < REQUEST_COUNT; i++) {
     request_init(&requests[i], RT_WRITE, i);
     request_acquire_data(&requests[i], &data[i]);
     disk_schedule(&disk, &requests[i]);
@@ -155,7 +155,7 @@ bool disk_schedule_requests(void) {
   }
 
   //read back pages to ensure same data
-  for (int i = 0; i < REQUEST_COUNT; i++) {
+  for (page_id_t i = 0; i < REQUEST_COUNT; i++) {
     request_init(&requests[i], RT_READ, i);
     request_acquire_data(&requests[i], &data[i]);
     disk_schedule(&disk, &requests[i]);
@@ -177,6 +177,10 @@ bool disk_schedule_requests(void) {
 
 
   disk_destroy(&disk);
+
+  for (int i = 0; i < REQUEST_COUNT; i++) {
+    free(data[i]);
+  }
   return true;
 }
 

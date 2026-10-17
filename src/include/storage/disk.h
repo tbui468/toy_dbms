@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <stdint.h>
 #include "storage/page.h"
 
 enum request_type {
@@ -24,10 +25,10 @@ struct request {
 #define QUEUE_CAPACITY 8
 
 struct queue {
-  size_t capacity;
-  size_t size;
-  size_t front;
-  size_t back;
+  uint32_t capacity;
+  uint32_t size;
+  uint32_t front;
+  uint32_t back;
   void **values; 
   pthread_mutex_t latch;  
   pthread_cond_t non_empty;

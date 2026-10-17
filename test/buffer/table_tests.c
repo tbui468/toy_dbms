@@ -19,15 +19,15 @@ bool table_put_within_threshold(void) {
   table_init(&table, 256);
 
   //assuming threshold factor is some reasonable number < 16
-  int count = 0;
-  for (int i = 0; i < 20; i += 2) {
+  frame_id_t count = 0;
+  for (frame_id_t i = 0; i < 20; i += 2) {
     table_put(&table, i, i);
     count++;
-    ASSERT_EQ((int) table.entry_count, count);
+    ASSERT_EQ(table.entry_count, count);
   }
 
-  for (int i = 0; i < 20; i += 2) {
-    size_t value;
+  for (frame_id_t i = 0; i < 20; i += 2) {
+    frame_id_t value;
     ASSERT_EQ(table_get(&table, i, &value), 1);
   }
 
@@ -39,15 +39,15 @@ bool table_put_beyond_threshold(void) {
   struct table table;
   table_init(&table, 8);
 
-  int count = 0;
-  for (int i = 0; i < 256; i++) {
+  frame_id_t count = 0;
+  for (frame_id_t i = 0; i < 256; i++) {
     table_put(&table, i, i);
     count++;
-    ASSERT_EQ((int) table.entry_count, count);
+    ASSERT_EQ(table.entry_count, count);
   }
 
-  for (int i = 0; i < 256; i++) {
-    size_t value;
+  for (frame_id_t i = 0; i < 256; i++) {
+    frame_id_t value;
     ASSERT_EQ(table_get(&table, i, &value), 1);
   }
 
@@ -59,20 +59,20 @@ bool table_delete_beyond_threshold(void) {
   struct table table;
   table_init(&table, 8);
 
-  for (int i = 0; i < 256; i++) {
+  for (frame_id_t i = 0; i < 256; i++) {
     table_put(&table, i, i);
   }
 
-  for (int i = 0; i < 256; i++) {
-    size_t value;
+  for (frame_id_t i = 0; i < 256; i++) {
+    frame_id_t value;
     ASSERT_EQ(table_get(&table, i, &value), 1);
   }
 
-  int count = 256;
-  for (int i = 0; i < 256; i++) {
+  frame_id_t count = 256;
+  for (frame_id_t i = 0; i < 256; i++) {
     table_delete(&table, i);
     count--;
-    ASSERT_EQ((int) table.entry_count, count);
+    ASSERT_EQ(table.entry_count, count);
   }
 
   table_free(&table);
@@ -83,14 +83,15 @@ bool table_put_duplicate_key(void) {
   struct table table;
   table_init(&table, 8);
 
-  for (int i = 0; i < 256; i++) {
+  for (frame_id_t i = 0; i < 256; i++) {
     table_put(&table, 0, i);
-    size_t value;
+    frame_id_t value;
     ASSERT_EQ(table_get(&table, 0, &value), 1);
-    ASSERT_EQ((int) value, i);
-    ASSERT_EQ((int) table.entry_count, 1);
+    ASSERT_EQ(value, i);
+    ASSERT_EQ(table.entry_count, 1);
   }
 
+  table_free(&table);
   return true;
 }
 
@@ -98,18 +99,18 @@ bool table_put_duplicate_key(void) {
 
 void *concurrency_helper0(void *arg) {
   struct table *table = (struct table *) arg;
-  for (int i = 0; i < COUNT; i++) {
+  for (frame_id_t i = 0; i < COUNT; i++) {
     if (i % 2 == 0) continue;
     table_put(table, i, i);
   }
 
-  for (int i = 0; i < COUNT; i++) {
+  for (frame_id_t i = 0; i < COUNT; i++) {
     if (i % 2 == 0) continue;
-    size_t result;
+    frame_id_t result;
     ASSERT_EQ(table_get(table, i, &result), 1);
   }
 
-  for (int i = 0; i < COUNT; i++) {
+  for (frame_id_t i = 0; i < COUNT; i++) {
     if (i % 2 == 0) continue;
     table_delete(table, i);
   }
@@ -119,18 +120,18 @@ void *concurrency_helper0(void *arg) {
 
 void *concurrency_helper1(void *arg) {
   struct table *table = (struct table *) arg;
-  for (int i = 0; i < COUNT; i++) {
+  for (frame_id_t i = 0; i < COUNT; i++) {
     if (i % 2 == 1) continue;
     table_put(table, i, i);
   }
 
-  for (int i = 0; i < COUNT; i++) {
+  for (frame_id_t i = 0; i < COUNT; i++) {
     if (i % 2 == 1) continue;
-    size_t result;
+    frame_id_t result;
     ASSERT_EQ(table_get(table, i, &result), 1);
   }
 
-  for (int i = 0; i < COUNT; i++) {
+  for (frame_id_t i = 0; i < COUNT; i++) {
     if (i % 2 == 1) continue;
     table_delete(table, i);
   }

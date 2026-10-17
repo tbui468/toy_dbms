@@ -54,18 +54,14 @@ Crafting Interpreters -> Crafting Database Systems
       Implemenation improvements
 
 TODO
-  -Wconversion is creating a lot of errors - go fix them first
-      turned this off since fixing above issue is going to require massive refactor anyway, so doing this later is better
-
-  Add this once all warnings are fixed
-    -Werror
-
-  Add these sanitizers
-    -fsanitize=address
-    -fsanitize=leak
-    -fsanitize=undefined
-
-    put these into some Makefile variable so that all Make commands use the same warnings
+  disk/
+    disk.c
+    scheduler.c  
+  cache/
+    list.c
+    table.c
+    replacer.c
+    cache.c 
 
   Use FATAL + FATAL_MSG to check for system / app errors
     list.c
@@ -138,3 +134,235 @@ TODO
       replacer_fix
       replacer_unfix
       replacer_size
+
+TOPICS TO WRITE ABOUT FOR AN EDUCATIONAL DATABASE SYSTEM
+========================================================
+
+The goal is to demonstrate engineering knowledge and design judgment rather than document a specific implementation. Articles focused on concepts, tradeoffs, and architecture remain valuable even after the code is rewritten.  Use books + papers as references for _all_ concepts.
+
+1. Why Databases Need a Buffer Pool
+-----------------------------------
+
+Instead of describing a specific implementation, explain:
+
+- Why databases cannot simply call fread() for every query
+- Disk I/O costs
+- Temporal locality
+- Spatial locality
+- Pin counts
+- Dirty pages
+- Page replacement strategies
+
+Focus on the problem being solved rather than how your current BufferPoolManager works.
+
+2. Disk Scheduling in Database Systems
+--------------------------------------
+
+Possible title:
+
+"Why Databases Reorder Disk Requests"
+
+Topics:
+
+- Sequential versus random I/O
+- HDD considerations (SMR vs CMR is really interesting)
+- SSD considerations
+- Request batching
+- Write coalescing
+- Queue design
+- Producer-consumer architectures
+
+Focus on the reasoning behind the scheduler rather than the code.
+
+3. What fsync() Actually Does
+-----------------------------
+
+Topics:
+
+- Application buffers
+- OS page cache
+- Storage controller caches
+- What happens during a crash
+- Durability guarantees
+- WAL interactions
+
+Many developers use databases daily but do not understand persistence semantics.
+
+3. WAL (Write-Ahead Logging) and Crash Recovery
+-----------------------------------------------
+
+Possible title:
+
+"Why Databases Write Data Twice"
+
+Topics:
+
+- Durability
+- Force vs. no-force policies
+- Steal vs. no-steal policies
+- Why WAL exists
+- Why fsync() on every data-page write is too expensive
+- Recovery after crashes
+
+Many software engineers use databases without understanding how durability is actually implemented.
+
+4. Database Concurrency
+-----------------------
+
+Topics:
+
+- Latches versus locks
+- Mutexes
+- Condition variables
+- Reader-writer locks
+- Deadlock prevention
+- Worker thread pools
+
+This demonstrates knowledge of systems programming and multithreaded design.
+
+5. Why Databases Use Pages
+--------------------------
+
+Topics:
+
+- Why records are grouped into pages
+- Fixed-size page layouts
+- Slotted pages
+- Fragmentation
+- Page identifiers
+- Record identifiers
+
+Most developers know SQL but not how data is physically stored.
+
+6. Storage Engine Architectures
+-------------------------------
+
+Heap Files
+
+- Simple design
+- Fast inserts
+- Poor lookup performance
+
+B+ Trees
+
+- Point lookups
+- Range scans
+- Clustered indexes
+- Non-clustered indexes
+
+LSM Trees
+
+- Sequential writes
+- Compactions
+- Write optimization
+
+Comparison:
+
+Heap + B+ Tree
+- More random writes
+- Read optimized
+
+LSM Tree
+- More sequential writes
+- Write optimized
+
+Connect the discussion to PostgreSQL, RocksDB, LevelDB, Cassandra, etc.
+
+7. How a SQL Query Executes
+---------------------------
+
+Example:
+
+SELECT *
+FROM users
+WHERE age > 30;
+
+Walk through:
+
+1. Parsing
+2. Query planning
+3. Physical plan generation
+4. Buffer pool lookup
+5. Page reads
+6. Predicate evaluation
+7. Returning results
+
+This is an excellent systems-oriented article.
+
+8. Building a Database Index
+----------------------------
+
+Topics:
+
+- Why full-table scans are expensive
+- Hash indexes
+- B+ tree indexes
+- Index maintenance
+- Covering indexes
+- Tradeoffs between different index structures
+
+Focus on concepts rather than implementation details.
+
+10. Database System Architecture
+--------------------------------
+
+Example architecture:
+
+Client
+  |
+Parser
+  |
+Optimizer
+  |
+Executor
+  |
+Buffer Pool
+  |
+Disk Manager
+  |
+Storage
+
+Explain how a query flows through the system.
+
+This can serve as the landing page for the project.
+
+11. Design Tradeoffs
+--------------------
+
+Examples:
+
+- Why I chose a page-oriented storage engine
+- Why I made the disk scheduler asynchronous
+- Why I separated the log manager from the buffer pool
+- Why I used condition variables instead of busy waiting
+- Why I chose B+ trees over hash indexes
+
+These articles remain relevant even when code changes because they focus on engineering decisions.
+
+12. Lessons Learned
+-------------------
+
+Examples:
+
+- Five mistakes I made building a database system
+- What I misunderstood about durability
+- Why my first page replacement algorithm failed
+- Bugs I encountered implementing concurrent data structures
+
+These articles demonstrate engineering maturity and self-reflection.
+
+Suggested Article Series
+========================
+
+1. Database architecture overview
+2. Page-based storage
+3. Buffer pool management
+4. WAL and durability
+5. Disk scheduling
+6. Concurrent execution
+7. B+ tree indexes
+8. Query execution
+9. LSM trees versus B+ trees
+10. Lessons learned
+
+The strongest portfolio articles focus on architecture, durability, concurrency, storage engines, caching, performance, and design tradeoffs. Those topics demonstrate transferable software engineering knowledge and remain useful even if the implementation evolves over time.

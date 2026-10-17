@@ -6,7 +6,7 @@
 #include "util/test.h"
 
 bool replacer_init_free(void) {
-  int cap = 8;
+  uint32_t cap = 8;
   struct replacer replacer;
   replacer_init(&replacer, cap);
   ASSERT_EQ(replacer_size(&replacer), 0);
@@ -15,7 +15,7 @@ bool replacer_init_free(void) {
 }
 
 bool replacer_first_access(void) {
-  int cap = 8;
+  uint32_t cap = 8;
   struct replacer replacer;
   replacer_init(&replacer, cap);
 
@@ -30,7 +30,7 @@ bool replacer_first_access(void) {
   return true;
 }
 bool replacer_unfix_order(void) {
-  int cap = 8;
+  uint32_t cap = 8;
   struct replacer replacer;
   replacer_init(&replacer, cap);
 
@@ -53,7 +53,7 @@ bool replacer_unfix_order(void) {
 }
 
 bool replacer_evict_frame(void) {
-  int cap = 8;
+  uint32_t cap = 8;
   struct replacer replacer;
   replacer_init(&replacer, cap);
 
@@ -80,7 +80,7 @@ bool replacer_evict_frame(void) {
 }
 
 bool replacer_evict_and_reuse(void) {
-  int cap = 8;
+  uint32_t cap = 8;
   struct replacer replacer;
   replacer_init(&replacer, cap);
 
@@ -98,18 +98,18 @@ bool replacer_evict_and_reuse(void) {
 }
 
 bool replacer_scale(void) {
-  int cap = 1024 * 1024;
+  uint32_t cap = 1024 * 1024;
   struct replacer replacer;
   replacer_init(&replacer, cap);
   
-  for (int i = 0; i < cap; i++) {
+  for (frame_id_t i = 0; i < cap; i++) {
     replacer_fix(&replacer, i);
     if (i % 2 == 0) {
       replacer_unfix(&replacer, i);
     }
   }
 
-  for (int i = 0; i < cap / 2; i++) {
+  for (frame_id_t i = 0; i < cap / 2; i++) {
     ASSERT_EQ(replacer_evict(&replacer), i * 2);
   }
   
@@ -123,25 +123,27 @@ bool replacer_scale(void) {
 
 struct data {
   struct replacer *replacer;
-  int id;
+  uint32_t id;
+  uint32_t thread_count;
 };
 
 void *concurrency_helper(void *arg) {
   struct data *data = (struct data *) arg;
   struct replacer *replacer = data->replacer;
-  int id = data->id;
+  uint32_t id = data->id;
+  uint32_t thread_count = data->thread_count;
   for (int j = 0; j < ITER_COUNT; j++) {
-    for (int i = 0; i < COUNT; i++) {
-      if (i % 2 != id) continue;
+    for (frame_id_t i = 0; i < COUNT; i++) {
+      if (i % thread_count != id) continue;
       replacer_fix(replacer, i);
     }
-    for (int i = 0; i < COUNT; i++) {
-      if (i % 2 != id) continue;
+    for (frame_id_t i = 0; i < COUNT; i++) {
+      if (i % thread_count != id) continue;
       replacer_unfix(replacer, i);
     }
   }
-  for (int i = COUNT / 2; i < COUNT; i++) {
-    if (i % 2 != id) continue;
+  for (frame_id_t i = COUNT / 2; i < COUNT; i++) {
+    if (i % thread_count != id) continue;
     replacer_fix(replacer, i);
   }
 
@@ -160,14 +162,14 @@ void *concurrency_evictor(void *arg) {
 
 bool replacer_concurrency(void) {
   struct replacer replacer;
-  replacer_init(&replacer, COUNT / 2);
+  replacer_init(&replacer, COUNT);
   
   pthread_t t0, t1, t2, t3;
 
-  struct data data0 = { .replacer = &replacer, .id=0 }; 
-  struct data data1 = { .replacer = &replacer, .id=1 }; 
-  struct data data2 = { .replacer = &replacer, .id=2 }; 
-  struct data data3 = { .replacer = &replacer, .id=3 }; 
+  struct data data0 = { .replacer = &replacer, .id=0, .thread_count=4 }; 
+  struct data data1 = { .replacer = &replacer, .id=1, .thread_count=4 }; 
+  struct data data2 = { .replacer = &replacer, .id=2, .thread_count=4 }; 
+  struct data data3 = { .replacer = &replacer, .id=3, .thread_count=4 }; 
   pthread_create(&t0, NULL, concurrency_helper, &data0); 
   pthread_create(&t1, NULL, concurrency_helper, &data1); 
   pthread_create(&t2, NULL, concurrency_helper, &data2); 

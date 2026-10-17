@@ -133,19 +133,21 @@ void queue_close(struct queue *queue) {
 static void disk_write_page(struct disk *disk, page_id_t page_id, const char *page_data) {
   size_t written = 0;
   while (written < PAGE_SIZE) {
-    ssize_t result = pwrite(disk->fd, page_data + written, PAGE_SIZE - written, page_id * PAGE_SIZE + written);
+    off_t offset = (off_t) page_id * PAGE_SIZE + (off_t) written;
+    ssize_t result = pwrite(disk->fd, page_data + written, PAGE_SIZE - written, offset);
     if (result == -1) {
       if (errno == EINTR) continue;
       FATAL();
     }
-    written += result;
+    written += (size_t) result;
   }
 }
 
 static void disk_read_page(struct disk *disk, page_id_t page_id, char *page_data) {
   size_t read = 0;
   while (read < PAGE_SIZE) {
-    ssize_t result = pread(disk->fd, page_data + read, PAGE_SIZE - read, page_id * PAGE_SIZE + read);
+    off_t offset = (off_t) page_id * PAGE_SIZE + (off_t) read;
+    ssize_t result = pread(disk->fd, page_data + read, PAGE_SIZE - read, offset);
     if (result == -1) {
       if (errno == EINTR) continue;
       FATAL();
@@ -153,7 +155,7 @@ static void disk_read_page(struct disk *disk, page_id_t page_id, char *page_data
 
     if (result == 0) FATAL_MSG("EOF before reading entire page");
 
-    read += result;
+    read += (size_t) result;
   }
 }
 

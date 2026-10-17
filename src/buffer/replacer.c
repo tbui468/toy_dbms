@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-void replacer_init(struct replacer *replacer, int capacity) {
+void replacer_init(struct replacer *replacer, uint32_t capacity) {
   replacer->capacity = capacity;
   list_init(&replacer->list, capacity);
   table_init(&replacer->table, capacity);
@@ -15,15 +15,16 @@ void replacer_free(struct replacer *replacer) {
   pthread_mutex_destroy(&replacer->latch);
 }
 
-int replacer_size(struct replacer *replacer) {
+uint32_t replacer_size(struct replacer *replacer) {
   return list_size(&replacer->list);
 }
 
 
 void replacer_fix(struct replacer *replacer, frame_id_t frame_id) {
   pthread_mutex_lock(&replacer->latch);
-  size_t off;
+  frame_id_t off;
   if (table_get(&replacer->table, frame_id, &off)) {
+    assert(list_contains(&replacer->list, frame_id));
     table_delete(&replacer->table, frame_id);
     list_erase(&replacer->list, off);
   }
@@ -32,11 +33,12 @@ void replacer_fix(struct replacer *replacer, frame_id_t frame_id) {
 
 void replacer_unfix(struct replacer *replacer, frame_id_t frame_id) {
   pthread_mutex_lock(&replacer->latch);
-  size_t throwaway;
+  frame_id_t throwaway;
   assert(!table_get(&replacer->table, frame_id, &throwaway));
+  assert(!list_contains(&replacer->list, frame_id));
   
-  size_t off = list_append(&replacer->list, frame_id);
-  table_put(&replacer->table, frame_id, off);
+  list_append(&replacer->list, frame_id);
+  table_put(&replacer->table, frame_id, frame_id);
   pthread_mutex_unlock(&replacer->latch);
 }
 
