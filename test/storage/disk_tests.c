@@ -131,7 +131,7 @@ bool disk_schedule_requests(void) {
   struct disk disk;
   disk_init(&disk, "test.db");
 
-  char *data[REQUEST_COUNT];
+  uint8_t *data[REQUEST_COUNT];
   for (int i = 0; i < REQUEST_COUNT; i++) {
     data[i] = malloc(PAGE_SIZE);
     memset(data[i], 'a' + i, PAGE_SIZE);

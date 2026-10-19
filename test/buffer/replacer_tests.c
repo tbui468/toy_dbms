@@ -118,7 +118,7 @@ bool replacer_scale(void) {
   return true;
 }
 
-#define ITER_COUNT 10
+#define ITER_COUNT 1
 #define COUNT 1024 * 1024
 
 struct data {

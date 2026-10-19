@@ -1,4 +1,22 @@
+Make a README.md similar to this:
+  https://github.com/auxten/go-sqldb
+
 Crafting Interpreters -> Crafting Database Systems
+  Introduction
+    DBMS are interesting beasts.  They manage databases that are often too large to fit in memory, so the part (even most) of it must remain in persistent storage.
+      Concurrency (???)
+      Durability
+      Atomicity
+      Integrity?  
+
+  Access Methods
+
+  Buffer Pool Manager (cache)
+
+  Replacement Algorithm
+
+  Disk Scheduling 
+
   Sprint to a complete program (including concurrency and recovery)
   Really barebones dbms, but all core components
     SQL -> Query Planning -> Operator Execution -> File/Index -> Cache -> Disk
@@ -46,7 +64,6 @@ Crafting Interpreters -> Crafting Database Systems
     metaprogramming (to allow something like templates/generics)
     methods (similar to golang)
 
-
     Writeups for all 3 above
       Motivation for each component in the dbms
       Algorithms implemented
@@ -66,12 +83,96 @@ TODO
     cache.c 
     guard.c
   access/
+    header.c
     heap.c
     hash.c
     tree.c //extra
 
+  Put project on github as public project
+    we've written a ton of code - wouldn't want to lose this now
+
+  Doxygen style comments/documentation on public APIs
+
+  guard.h and guard.c - these are the main functions higher-level containers will use 
+    Still using cache_init_basic, implement basic guard functions and tests
+    Think about the intended usage (meta page, heap header page, heap page, tree header page, tree page, etc)
+    Assume all pages have been allocated and filled with data already (since meta page is not implemented, so no way to allocate/free pages)
+      read guard
+      write guard
+
+    //if lookup and find_free_frame fail, need to evict - this should be one cache function all guards use
+    frame_id cache_evict_frame(struct cache *cache) {
+      if (replacer_size(&cache->replacer) == 0) FATAL_MSG("No unfixed frame to evict!");
+      frame_id frame_id = replacer_evict(&cache->replacer);
+     
+      struct frame_header *header = frame_header(frame_id);
+      if (header->dirty) {
+        cache_flush_page(header->page_id);
+      }
+
+      table_delete(&cache->page_to_frame_table, page_id);
+
+      return frame_id;
+    }
+
+    Once above seem okay, can do page allocation/freeining by keeping a meta_page guard in cache at all times
+
+    Eviction
+      if no free frames remaining, need to evict something + flush contents if dirty
+
+    Look at guard to see functions needed to evict frames / flush pages when cache capacity is reached
+      Implement and unit test these too
+
+  Implement this cache API first and test - need to be able to initialize a guard to get the meta page in order to alloc/free pages from a file
+    void cache_init(struct cache *cache, uint32_t capacity) {
+    void cache_destroy(struct cache *cache) {
+    page_id_t cache_alloc_page(struct cache *cache) {
+    void cache_free_page(struct cache *cache, page_id_t page_id) {
+
+    guard_init
+      this function requires a lot of the cache to function correctly, including
+        table to map page_id -> frame_id
+        table to track free frames (where value can just be set to 0)
+        struct frame to store pins/dirty/page_data_ptr and other frame data
+        alloc an array of frames
+        alloc a large buffer to store page data that's read in from disk
+
+    To make cache easier to test, could make a version of cache_init that doesn't take a meta_page guard
+
+
+
+
+
+  struct frame *cache_get_frame(cache, frame_id) {
+    return cache->frames[frame_id];
+  }
+
+  void frame_increment_pin(frame) {
+  }
+
+  void frame_decrement_pin(frame) {
+  }
+      
+
   Cache and page (guard)
-    look at bpm to see API
+    cache_init_destroy
+      test that nothing breaks on allocation/free
+      get a write guard on the header page and pin it for duration of dbms operation
+      when destroying, unpin and flush header page
+      
+    cache_new_delete_page
+      test if allocations are atomic
+      new/delete requires getting a write guard on header page
+
+    Init + Destroy
+    New Page
+    Delete Page
+    Write Page Guard
+    Read Page Guard
+    Flush Page
+      takes latch and flushes page
+    Flush All Pages
+      takes latch once and flushes all pages
 
     for page guards, should have wrapper functions for _all_ functions that will use page guards
       these wrapper functions will allocate a context to allow usage of page guards before calling the implementation

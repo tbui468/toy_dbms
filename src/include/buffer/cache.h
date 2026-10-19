@@ -1,46 +1,36 @@
-#ifndef BPM_H
-#define BPM_H
-
-#include "storage/page.h"
+#ifndef CACHE_H
+#define CACHE_H
 
 #include <stdlib.h>
-#include "buffer/lru.h"
+#include "buffer/guard.h"
+#include "buffer/replacer.h"
+#include "storage/page.h"
+#include "storage/disk.h"
 
-struct bpm {
-  size_t size;
-  size_t next_page_id;
-  struct lru replacer;
+struct cache {
+  uint32_t capacity;
+  struct replacer replacer;
+  struct guard header;
+  struct disk *disk;
+  struct list free_frames;
+  struct table page_frame_table;
+  struct frame_header *frame_headers;
+  uint8_t *frame_buffers;
 };
 
+void cache_init(struct cache *cache, struct disk *disk, uint32_t capacity);
+//initialize the cache without initalizing meta page guard to simplify testing of internal API
+void cache_init_basic(struct cache *cache, struct disk *disk, uint32_t capacity);
+void cache_destroy(struct cache *cache);
+void cache_destroy_basic(struct cache *cache);
+frame_id_t cache_find_free_frame(struct cache *cache);
+void cache_fill_frame(struct cache *cache, frame_id_t frame_id, page_id_t page_id);
+bool cache_lookup_page(struct cache *cache, page_id_t page_id, frame_id_t *frame_id);
+void cache_flush_page(struct cache *cache, page_id_t page_id);
+struct frame_header* cache_frame_header(struct cache *cache, frame_id_t frame_id);
+uint8_t* cache_frame_buffer(struct cache *cache, frame_id_t frame_id);
 
-void bpm_init(struct bpm *bpm, int size);
-int bpm_size(const struct bpm *bpm);
-page_id_t bpm_new_page(struct bpm *bpm);
-// bpm_flush_page
-// bpm_pin_count
+page_id_t cache_alloc_page(struct cache *cache);
+void cache_free_page(struct cache *cache, page_id_t page_id);
 
-enum guard_type {
-  GT_READ,
-  GT_WRITE
-};
-
-// TODO rename to struct page, and move to page.h
-struct guard {
-  enum guard_type type;
-  struct bpm *bpm;
-  bool dirty;
-};
-
-void rguard_init(struct guard *guard, struct bpm *bpm, page_id_t page_id);
-void rguard_free(struct guard *guard);
-
-//r/wlatch_init
-//  should increment pin
-//  need to latch bpm before doing anything to ensure thread-safe
-//r/wlatch_free
-//  should decrement pin and unfix if necessary
-//flush
-//increment_pin
-//decrement_pin
-
-#endif // BPM_H
+#endif // CACHE_H

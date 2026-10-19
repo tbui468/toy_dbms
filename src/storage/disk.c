@@ -18,13 +18,13 @@ void request_init(struct request *request, enum request_type type, page_id_t pag
   request->page_data = NULL;
 }
 
-void request_acquire_data(struct request *request, char **ptr) {
+void request_acquire_data(struct request *request, uint8_t **ptr) {
   request->page_data = *ptr;
   *ptr = NULL; 
 }
 
-char *request_release_data(struct request *request) {
-  char *ptr = request->page_data;
+uint8_t *request_release_data(struct request *request) {
+  uint8_t *ptr = request->page_data;
   request->page_data = NULL;
   return ptr;
 }
@@ -128,7 +128,7 @@ void queue_close(struct queue *queue) {
   pthread_cond_broadcast(&queue->non_empty);
 }
 
-static void disk_write_page(struct disk *disk, page_id_t page_id, const char *page_data) {
+static void disk_write_page(struct disk *disk, page_id_t page_id, const uint8_t *page_data) {
   size_t written = 0;
   while (written < PAGE_SIZE) {
     off_t offset = (off_t) page_id * PAGE_SIZE + (off_t) written;
@@ -141,7 +141,7 @@ static void disk_write_page(struct disk *disk, page_id_t page_id, const char *pa
   }
 }
 
-static void disk_read_page(struct disk *disk, page_id_t page_id, char *page_data) {
+static void disk_read_page(struct disk *disk, page_id_t page_id, uint8_t *page_data) {
   size_t read = 0;
   while (read < PAGE_SIZE) {
     off_t offset = (off_t) page_id * PAGE_SIZE + (off_t) read;

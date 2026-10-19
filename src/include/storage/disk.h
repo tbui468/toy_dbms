@@ -19,7 +19,7 @@ struct request {
   bool complete;
   enum request_type type;
   page_id_t page_id;
-  char *page_data;
+  uint8_t *page_data;
 };
 
 #define QUEUE_CAPACITY 8
@@ -43,8 +43,8 @@ struct disk {
 };
 
 void request_init(struct request *request, enum request_type type, page_id_t page_id);
-void request_acquire_data(struct request *request, char **ptr);
-char *request_release_data(struct request *request);
+void request_acquire_data(struct request *request, uint8_t **ptr);
+uint8_t *request_release_data(struct request *request);
 void request_destroy(struct request *request);
 void request_wait(struct request *request);
 
