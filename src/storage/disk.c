@@ -18,9 +18,8 @@ void request_init(struct request *request, enum request_type type, page_id_t pag
   request->page_data = NULL;
 }
 
-void request_acquire_data(struct request *request, uint8_t **ptr) {
-  request->page_data = *ptr;
-  *ptr = NULL; 
+void request_acquire_data(struct request *request, uint8_t *ptr) {
+  request->page_data = ptr;
 }
 
 uint8_t *request_release_data(struct request *request) {
@@ -192,10 +191,19 @@ static void *handle_request(void *arg) {
 }
 
 void disk_init(struct disk *disk, const char *path) {
+  disk->file_new = false;
   queue_init(&disk->requests);
   pthread_create(&disk->request_handler, NULL, handle_request, disk);
-  disk->fd = open(path, O_CREAT | O_RDWR, 0644);
-  if (disk->fd == -1) FATAL();
+
+  disk->fd = open(path, O_CREAT | O_EXCL | O_RDWR, 0644);
+  if (disk->fd == -1 && errno == EEXIST) {
+    disk->fd = open(path, O_RDWR, 0644);
+    if (disk->fd == -1) FATAL();
+
+    disk->file_new = true;
+  } else {
+    FATAL();
+  }
 }
 
 void disk_destroy(struct disk *disk) {

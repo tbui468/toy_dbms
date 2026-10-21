@@ -18,6 +18,7 @@ _Static_assert(sizeof(struct meta_page) == PAGE_SIZE, "struct meta_page must be 
 
 struct meta_page* meta_page_mut(struct guard *guard);
 const struct meta_page* meta_page_immut(struct guard *guard);
+void meta_page_init(struct meta_page *page);
 page_id_t meta_page_alloc_page(struct meta_page *page);
 void meta_page_free_page(struct meta_page *page, page_id_t page_id);
 

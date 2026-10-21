@@ -40,10 +40,11 @@ struct disk {
   struct queue requests;
   pthread_t request_handler;
   int fd;
+  bool file_new;
 };
 
 void request_init(struct request *request, enum request_type type, page_id_t page_id);
-void request_acquire_data(struct request *request, uint8_t **ptr);
+void request_acquire_data(struct request *request, uint8_t *ptr);
 uint8_t *request_release_data(struct request *request);
 void request_destroy(struct request *request);
 void request_wait(struct request *request);

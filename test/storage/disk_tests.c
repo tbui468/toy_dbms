@@ -140,7 +140,7 @@ bool disk_schedule_requests(void) {
   struct request requests[REQUEST_COUNT];
   for (page_id_t i = 0; i < REQUEST_COUNT; i++) {
     request_init(&requests[i], RT_WRITE, i);
-    request_acquire_data(&requests[i], &data[i]);
+    request_acquire_data(&requests[i], data[i]);
     disk_schedule(&disk, &requests[i]);
   }
   
@@ -157,7 +157,7 @@ bool disk_schedule_requests(void) {
   //read back pages to ensure same data
   for (page_id_t i = 0; i < REQUEST_COUNT; i++) {
     request_init(&requests[i], RT_READ, i);
-    request_acquire_data(&requests[i], &data[i]);
+    request_acquire_data(&requests[i], data[i]);
     disk_schedule(&disk, &requests[i]);
   }
 

@@ -26,4 +26,22 @@ static inline void latch_unlock(pthread_mutex_t *latch) {
   if (pthread_mutex_unlock(latch) != 0) FATAL();
 }
 
+static inline void rwlatch_init(pthread_rwlock_t *latch) {
+  if (pthread_rwlock_init(latch, NULL) != 0) FATAL();
+}
+
+static inline void rwlatch_destroy(pthread_rwlock_t *latch) {
+  if (pthread_rwlock_destroy(latch) != 0) FATAL();
+}
+
+static inline void rwlatch_rlock(pthread_rwlock_t *latch) {
+  if (pthread_rwlock_rdlock(latch) != 0) FATAL();
+}
+static inline void rwlatch_wlock(pthread_rwlock_t *latch) {
+  if (pthread_rwlock_wrlock(latch) != 0) FATAL();
+}
+static inline void rwlatch_unlock(pthread_rwlock_t *latch) {
+  if (pthread_rwlock_unlock(latch) != 0) FATAL();
+}
+
 #endif // UTIL_H

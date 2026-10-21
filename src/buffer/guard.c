@@ -1,38 +1,69 @@
 #include "buffer/guard.h"
+#include "util/util.h"
+#include "buffer/frame.h"
+#include "buffer/cache.h"
 #include <stddef.h>
 #include <assert.h>
 
-void guard_init(struct guard *guard, enum guard_type type, page_id_t page_id, struct cache *cache) {
+void guard_init(struct guard *guard, enum guard_type type, struct cache *cache, page_id_t page_id) {
   guard->type = type;
-  guard->id = page_id;
-  guard->data = NULL; // TODO this acutally needs to be pointed to buffers
   guard->cache = cache;
 
-  /*
+  latch_lock(&cache->latch);
+
   frame_id_t frame_id;
-  if (!cache_contains_page(cache, page_id, &frame_id)) {
-    if ((frame_id = cache_get_free_frame(cache)) == INVALID_FRAME_ID) {
-      //TODO evict unpinned frame - otherwise crash for now
-      //     if contents of page in evicted frame is dirty, flush to disk
-      //     assign frame_id to this newly evicted frame
+  if (!cache_lookup_page(cache, page_id, &frame_id)) {
+    if ((frame_id = cache_find_free_frame(cache)) == INVALID_FRAME_ID) {
+      frame_id = replacer_evict(&cache->replacer);
+      if (frame_id == INVALID_FRAME_ID) assert(false); //TODO guard_init should return error code
+
+      struct frame_header *header = cache_frame_header(cache, frame_id);
+      if (header->dirty) {
+        cache_flush_page(cache, header->page_id);        
+      }
     }
-    struct frame *frame = cache_get_frame(cache, frame_id);
-    //TODO initialize frame (including reading data from disk)
+
+    cache_fill_frame(cache, frame_id, page_id);
   }
 
-  struct frame *frame = cache_get_frame(cache, frame_id);
-  frame_increment_pin(frame);
+  guard->frame_header = cache_frame_header(cache, frame_id);
+  latch_unlock(&cache->latch);
 
-  // TODO cache checks if page_id already exists in cache - need to use table here to map page_id -> frame_id
-  //        if so, get data from frame and increment pin on it
-  //        else allocate new frame, read data from disk - but if a new frame cannot be allocated, must run eviction algorithm
+  if (type == GT_READ) {
+    rwlatch_rlock(&guard->frame_header->latch);
+  } else {
+    assert(type == GT_WRITE);
+    rwlatch_wlock(&guard->frame_header->latch);
+  }
 
-  //page->data = get cache to give frame with loaded data here
-  */
+  latch_lock(&cache->latch);
 
-  assert(false);
+  guard->frame_header->pins++;
+  if (guard->frame_header->pins > 0) {
+    replacer_fix(&cache->replacer, frame_id); 
+  }
+  latch_unlock(&cache->latch);
 }
 
 void guard_destroy(struct guard *guard) {
-  guard = guard; // TODO actually do something  
+  latch_lock(&guard->cache->latch);
+  guard->frame_header->pins--;
+  if (guard->frame_header->pins == 0) {
+    frame_id_t frame_id = (frame_id_t) (guard->frame_header - guard->cache->frame_headers);
+    replacer_unfix(&guard->cache->replacer, frame_id); 
+  }
+  latch_unlock(&guard->cache->latch);
+
+  rwlatch_unlock(&guard->frame_header->latch);
+}
+
+const uint8_t* guard_raw_immut(struct guard *guard) {
+  assert(guard->type == GT_READ || guard->type == GT_WRITE);
+  return (const uint8_t*) guard->frame_header->page_data;
+}
+
+uint8_t* guard_raw_mut(struct guard *guard) {
+  assert(guard->type == GT_WRITE);
+  guard->frame_header->dirty = true;
+  return guard->frame_header->page_data;
 }
